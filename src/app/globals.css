@@ -1,0 +1,544 @@
+@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;500;600;700;800;900&family=Sora:wght@300;400;500;600;700;800&family=DM+Sans:wght@400;500;600;700&family=Outfit:wght@300;400;500;600;700;800;900&family=Poppins:wght@300;400;500;600;700;800;900&family=Inter:wght@300;400;500;600;700;800;900&display=swap');
+@import "tailwindcss";
+
+:root {
+  /* Dark Theme (Default) */
+  --background: #000000;
+  --foreground: #ffffff;
+  --card-bg: #0a0a0a;
+  --card-border: rgba(220, 38, 38, 0.3);
+  --primary: #dc2626;
+  --primary-hover: #b91c1c;
+  --secondary: #171717;
+  --accent: #ef4444;
+  --muted: #525252;
+  --muted-foreground: #a3a3a3;
+  
+  /* Typography System - Mood-Optimized */
+  --font-display: 'Playfair Display', serif;
+  --font-heading: 'Sora', sans-serif;
+  --font-subheading: 'DM Sans', sans-serif;
+  --font-body: 'Outfit', sans-serif;
+  --font-accent: 'Poppins', sans-serif;
+  
+  /* Font Sizes - Hierarchical & Readable */
+  --font-display-lg: 3.5rem;
+  --font-display-md: 2.8rem;
+  --font-display-sm: 2.2rem;
+  --font-heading-lg: 1.875rem;
+  --font-heading-md: 1.5rem;
+  --font-heading-sm: 1.25rem;
+  --font-subheading-lg: 1.125rem;
+  --font-subheading-md: 1rem;
+  --font-body-lg: 1.0625rem;
+  --font-body-md: 0.95rem;
+  --font-body-sm: 0.875rem;
+  --font-body-xs: 0.75rem;
+  
+  /* Line Heights - Wellness-focused readability */
+  --leading-tight: 1.2;
+  --leading-snug: 1.4;
+  --leading-normal: 1.6;
+  --leading-relaxed: 1.75;
+  
+  /* Letter Spacing */
+  --tracking-tight: -0.02em;
+  --tracking-normal: 0em;
+  --tracking-wide: 0.02em;
+  --tracking-wider: 0.05em;
+}
+
+[data-theme="light"] {
+  /* Light Theme */
+  --background: #ffffff;
+  --foreground: #0a0a0a;
+  --card-bg: #f9fafb;
+  --card-border: rgba(220, 38, 38, 0.2);
+  --primary: #dc2626;
+  --primary-hover: #b91c1c;
+  --secondary: #f3f4f6;
+  --accent: #ef4444;
+  --muted: #9ca3af;
+  --muted-foreground: #6b7280;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
+
+html {
+  font-size: 16px;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Responsive Font Sizing */
+@media (max-width: 640px) {
+  html {
+    font-size: 14px;
+  }
+  
+  :root {
+    --font-display-lg: 2.5rem;
+    --font-display-md: 2rem;
+    --font-display-sm: 1.75rem;
+    --font-heading-lg: 1.5rem;
+    --font-heading-md: 1.25rem;
+    --font-heading-sm: 1.125rem;
+  }
+}
+
+@media (min-width: 641px) and (max-width: 1024px) {
+  html {
+    font-size: 15px;
+  }
+  
+  :root {
+    --font-display-lg: 3rem;
+    --font-display-md: 2.5rem;
+    --font-display-sm: 2rem;
+  }
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-body);
+  font-size: var(--font-body-md);
+  line-height: var(--leading-normal);
+  letter-spacing: var(--tracking-normal);
+  margin: 0;
+  padding: 0;
+  overflow-x: hidden;
+  transition: background-color 0.3s ease, color 0.3s ease;
+  font-weight: 400;
+}
+
+/* Display Typography - Playfair Display (Premium, Elegant) */
+h1, .text-display-lg {
+  font-family: var(--font-display);
+  font-size: var(--font-display-lg);
+  line-height: var(--leading-tight);
+  letter-spacing: var(--tracking-tight);
+  font-weight: 700;
+  margin: 0;
+}
+
+h2, .text-display-md {
+  font-family: var(--font-display);
+  font-size: var(--font-display-md);
+  line-height: var(--leading-tight);
+  letter-spacing: var(--tracking-tight);
+  font-weight: 700;
+  margin: 0;
+}
+
+/* Heading Typography - Sora (Modern, Geometric) */
+h3, .text-heading-lg {
+  font-family: var(--font-heading);
+  font-size: var(--font-heading-lg);
+  line-height: var(--leading-snug);
+  letter-spacing: var(--tracking-normal);
+  font-weight: 700;
+  margin: 0;
+}
+
+h4, .text-heading-md {
+  font-family: var(--font-heading);
+  font-size: var(--font-heading-md);
+  line-height: var(--leading-snug);
+  letter-spacing: var(--tracking-normal);
+  font-weight: 600;
+  margin: 0;
+}
+
+h5, .text-heading-sm {
+  font-family: var(--font-heading);
+  font-size: var(--font-heading-sm);
+  line-height: var(--leading-snug);
+  letter-spacing: var(--tracking-normal);
+  font-weight: 600;
+  margin: 0;
+}
+
+/* Subheading Typography - DM Sans (Clear, Friendly) */
+.text-subheading-lg {
+  font-family: var(--font-subheading);
+  font-size: var(--font-subheading-lg);
+  line-height: var(--leading-snug);
+  letter-spacing: var(--tracking-normal);
+  font-weight: 600;
+  margin: 0;
+}
+
+.text-subheading-md {
+  font-family: var(--font-subheading);
+  font-size: var(--font-subheading-md);
+  line-height: var(--leading-snug);
+  letter-spacing: var(--tracking-normal);
+  font-weight: 500;
+  margin: 0;
+}
+
+/* Body Typography - Outfit (Warm, Approachable) */
+p, .text-body-lg {
+  font-family: var(--font-body);
+  font-size: var(--font-body-lg);
+  line-height: var(--leading-normal);
+  letter-spacing: var(--tracking-normal);
+  margin: 0;
+}
+
+.text-body-md {
+  font-family: var(--font-body);
+  font-size: var(--font-body-md);
+  line-height: var(--leading-normal);
+  letter-spacing: var(--tracking-normal);
+}
+
+.text-body-sm {
+  font-family: var(--font-body);
+  font-size: var(--font-body-sm);
+  line-height: var(--leading-snug);
+  letter-spacing: var(--tracking-normal);
+}
+
+.text-body-xs {
+  font-family: var(--font-body);
+  font-size: var(--font-body-xs);
+  line-height: var(--leading-snug);
+  letter-spacing: var(--tracking-wide);
+}
+
+/* Accent Typography - Poppins (Energetic, Modern) */
+.text-accent, .text-accent-lg {
+  font-family: var(--font-accent);
+  font-weight: 600;
+  letter-spacing: var(--tracking-wide);
+}
+
+.text-accent-sm {
+  font-family: var(--font-accent);
+  font-size: var(--font-body-xs);
+  font-weight: 500;
+  letter-spacing: var(--tracking-wider);
+  text-transform: uppercase;
+}
+
+/* Font Weight Utilities */
+.font-light { font-weight: 300; }
+.font-normal { font-weight: 400; }
+.font-medium { font-weight: 500; }
+.font-semibold { font-weight: 600; }
+.font-bold { font-weight: 700; }
+.font-black { font-weight: 900; }
+
+/* Letter Spacing Utilities */
+.tracking-normal { letter-spacing: var(--tracking-normal); }
+.tracking-wide { letter-spacing: var(--tracking-wide); }
+.tracking-wider { letter-spacing: var(--tracking-wider); }
+
+/* Line Height Utilities */
+.leading-tight { line-height: var(--leading-tight); }
+.leading-snug { line-height: var(--leading-snug); }
+.leading-normal { line-height: var(--leading-normal); }
+.leading-relaxed { line-height: var(--leading-relaxed); }
+
+/* Custom Scrollbar - Dark Theme */
+::-webkit-scrollbar {
+  width: 10px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--secondary);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--primary);
+  border-radius: 5px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--primary-hover);
+}
+
+/* Light Theme Scrollbar */
+[data-theme="light"] ::-webkit-scrollbar-track {
+  background: #e5e7eb;
+}
+
+[data-theme="light"] ::-webkit-scrollbar-thumb {
+  background: #dc2626;
+}
+
+[data-theme="light"] ::-webkit-scrollbar-thumb:hover {
+  background: #b91c1c;
+}
+
+/* Form Input Visibility Enhancements */
+input[type="text"],
+input[type="email"],
+input[type="password"],
+textarea {
+  color: currentColor;
+}
+
+/* Placeholder text visibility */
+input::placeholder,
+textarea::placeholder {
+  opacity: 1;
+}
+
+[data-theme="light"] input::placeholder,
+[data-theme="light"] textarea::placeholder {
+  color: #9ca3af;
+}
+
+[data-theme="dark"] input::placeholder,
+[data-theme="dark"] textarea::placeholder {
+  color: #6b7280;
+}
+
+/* Text Color Contrast Overrides for Dark Theme */
+[data-theme="dark"] .text-gray-500,
+[data-theme="dark"] .text-gray-600,
+[data-theme="dark"] .text-gray-700 {
+  color: #d1d5db !important;
+}
+
+[data-theme="dark"] .text-neutral-400,
+[data-theme="dark"] .text-neutral-500 {
+  color: #e5e7eb !important;
+}
+
+/* Light theme text visibility for common gray colors */
+[data-theme="light"] .text-neutral-400 {
+  @apply text-gray-800;
+}
+
+[data-theme="light"] .text-neutral-500 {
+  @apply text-gray-900;
+}
+
+[data-theme="light"] .text-gray-500 {
+  @apply text-gray-900;
+}
+
+[data-theme="light"] .text-gray-400 {
+  @apply text-gray-800;
+}
+
+/* Ensure text contrast in both themes */
+[data-theme="light"] {
+  color-scheme: light;
+}
+
+[data-theme="dark"] {
+  color-scheme: dark;
+}
+
+/* Advanced Button Hover Animations */
+@keyframes glow-pulse {
+  0%, 100% {
+    filter: drop-shadow(0 0 8px rgba(168, 85, 247, 0.4));
+  }
+  50% {
+    filter: drop-shadow(0 0 20px rgba(168, 85, 247, 0.8));
+  }
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: -1000px 0;
+  }
+  100% {
+    background-position: 1000px 0;
+  }
+}
+
+@keyframes float-bounce {
+  0%, 100% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(-8px);
+  }
+}
+
+/* Button Hover Glow Effect */
+button:hover {
+  animation: glow-pulse 2s ease-in-out infinite;
+}
+
+/* Smooth transitions for interactive elements */
+button, [role="button"] {
+  transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+/* Enhanced shadow for elevated state */
+.shadow-elevation {
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.3),
+              0 0 40px rgba(168, 85, 247, 0.2);
+}
+
+/* Advanced Custom Cursor Styles */
+
+/* Pointer cursor for all interactive elements */
+button,
+[role="button"],
+a,
+input[type="button"],
+input[type="submit"],
+input[type="checkbox"],
+input[type="radio"],
+label[for],
+select,
+.cursor-pointer,
+[onclick],
+motion.button {
+  cursor: pointer !important;
+}
+
+/* Text cursor for input fields */
+input[type="text"],
+input[type="email"],
+input[type="password"],
+input[type="search"],
+input[type="tel"],
+input[type="url"],
+textarea {
+  cursor: text !important;
+}
+
+/* Not-allowed cursor for disabled elements */
+button:disabled,
+input:disabled,
+select:disabled,
+textarea:disabled,
+[disabled] {
+  cursor: not-allowed !important;
+  opacity: 0.6;
+}
+
+/* Move cursor for draggable elements */
+[draggable="true"] {
+  cursor: move !important;
+}
+
+/* Help cursor for elements with titles/tooltips */
+[title]:not(a):not(button) {
+  cursor: help !important;
+}
+
+/* Zoom cursor for zoomable images */
+img[data-zoomable="true"],
+.zoomable {
+  cursor: zoom-in !important;
+}
+
+/* Mobile-Specific Optimizations */
+@media (max-width: 640px) {
+  /* Improve touch targets */
+  button, a, input, select, textarea {
+    min-height: 44px;
+  }
+  
+  /* Better scrolling on mobile */
+  body {
+    -webkit-overflow-scrolling: touch;
+  }
+  
+  /* Prevent zoom on input focus */
+  input, select, textarea {
+    font-size: 16px !important;
+  }
+  
+  /* Hide scrollbar on mobile for cleaner UI */
+  ::-webkit-scrollbar {
+    width: 4px;
+  }
+  
+  ::-webkit-scrollbar-thumb {
+    background: rgba(220, 38, 38, 0.3);
+    border-radius: 4px;
+  }
+  
+  /* Better mobile typography */
+  h1 {
+    font-size: 1.75rem !important;
+    line-height: 1.3 !important;
+  }
+  
+  h2 {
+    font-size: 1.5rem !important;
+    line-height: 1.3 !important;
+  }
+  
+  h3 {
+    font-size: 1.25rem !important;
+    line-height: 1.4 !important;
+  }
+  
+  /* Tighter spacing for mobile */
+  .space-y-8 > * + * {
+    margin-top: 1.5rem !important;
+  }
+  
+  .space-y-6 > * + * {
+    margin-top: 1rem !important;
+  }
+  
+  /* Smaller gaps in grids */
+  .gap-8 {
+    gap: 1rem !important;
+  }
+  
+  .gap-6 {
+    gap: 0.75rem !important;
+  }
+  
+  /* Better card padding on mobile */
+  [class*="rounded-2xl"],
+  [class*="rounded-3xl"] {
+    padding: 1rem !important;
+  }
+}
+
+/* Tablet Optimizations */
+@media (min-width: 641px) and (max-width: 1024px) {
+  /* Adjust touch targets for tablets */
+  button, a {
+    min-height: 40px;
+  }
+}
+
+/* Prevent text selection on interactive elements */
+@media (pointer: coarse) {
+  button, .no-select {
+    -webkit-user-select: none;
+    user-select: none;
+    -webkit-tap-highlight-color: transparent;
+  }
+}
+
+/* Safe area insets for notched devices */
+@supports (padding: max(0px)) {
+  body {
+    padding-left: max(0px, env(safe-area-inset-left));
+    padding-right: max(0px, env(safe-area-inset-right));
+  }
+}
+
+/* Hide scrollbar utility class */
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+
