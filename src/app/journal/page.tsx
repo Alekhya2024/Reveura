@@ -232,9 +232,9 @@ export default function JournalPage() {
           ))}
         </div>
 
-        <div className="relative z-10 p-4 sm:p-6 md:p-8">
-          <motion.div initial={{ opacity: 0, y: -50 }} animate={{ opacity: 1, y: 0 }} className="mb-6 sm:mb-8">
-            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-6 sm:mb-8 gap-4">
+        <div className="relative z-10 p-5 sm:p-8 md:p-10">
+          <motion.div initial={{ opacity: 0, y: -50 }} animate={{ opacity: 1, y: 0 }} className="mb-8 sm:mb-10">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-7 sm:mb-9 gap-5 sm:gap-6">
               <div>
                 <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold bg-gradient-to-r from-purple-600 via-pink-500 to-orange-500 bg-clip-text text-transparent mb-2">
                   My Journey
@@ -276,7 +276,7 @@ export default function JournalPage() {
               </div>
             </div>
 
-            <div className="flex gap-2 sm:gap-3 mb-6 overflow-x-auto pb-2">
+            <div className="flex gap-3 sm:gap-4 mb-8 overflow-x-auto pb-2">
               {[
                 { mode: 'grid', label: 'Grid', icon: BarChart3 },
                 { mode: 'timeline', label: 'Timeline', icon: Activity },
@@ -302,19 +302,19 @@ export default function JournalPage() {
               ))}
             </div>
 
-            <div className="mb-6">
-              <h2 className="text-xs font-semibold text-gray-500 mb-3 flex items-center gap-2">
+            <div className="mt-4 sm:mt-5 mb-10 sm:mb-12 pt-2">
+              <h2 className="text-xs font-semibold text-gray-500 mb-4 sm:mb-5 flex items-center gap-2">
                 <Heart className="w-3.5 h-3.5" />
                 FILTER BY MOOD
               </h2>
-              <div className="flex gap-2 overflow-x-auto pb-2">
+              <div className="flex flex-wrap gap-2.5 sm:gap-3 overflow-x-auto pb-3">
                 <motion.button
                   onClick={() => {
                     playClickSound();
                     setFilterMood(null);
                   }}
                   whileHover={{ scale: 1.05 }}
-                  className={`px-5 py-2 rounded-full font-semibold cursor-pointer text-sm ${
+                  className={`px-5 py-2.5 rounded-full font-semibold cursor-pointer text-sm ${
                     !filterMood ? 'bg-gradient-to-r from-purple-600 to-pink-500 text-white' : 'bg-gray-700/70 text-white'
                   }`}
                 >
@@ -331,7 +331,7 @@ export default function JournalPage() {
                         setFilterMood(mood.id);
                       }}
                       whileHover={{ scale: 1.05 }}
-                      className={`px-4 py-2 rounded-full flex items-center gap-2 font-medium cursor-pointer text-sm ${
+                      className={`px-4 py-2.5 rounded-full flex items-center gap-2 font-medium cursor-pointer text-sm ${
                         filterMood === mood.id ? `bg-gradient-to-r ${mood.gradient} text-white shadow-xl` : 'bg-gray-700/70 text-white'
                       }`}
                     >
@@ -351,10 +351,10 @@ export default function JournalPage() {
                 initial={{ opacity: 0, height: 0 }}
                 animate={{ opacity: 1, height: 'auto' }}
                 exit={{ opacity: 0, height: 0 }}
-                className="mb-8"
+                className="mb-10"
               >
-                <div className="grid grid-cols-4 gap-6">
-                  <div className="col-span-2 bg-purple-500/10 backdrop-blur-xl rounded-3xl p-6 border border-purple-200/20">
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-7">
+                  <div className="md:col-span-2 bg-purple-500/10 backdrop-blur-xl rounded-3xl p-7 border border-purple-200/20">
                     <h3 className="text-lg font-bold mb-4 flex items-center gap-2 text-white">
                       <Brain className="w-5 h-5 text-purple-400" />
                       Mood Distribution
@@ -385,7 +385,7 @@ export default function JournalPage() {
                   <div className="bg-blue-500/10 backdrop-blur-xl rounded-3xl p-6 border border-blue-200/20">
                     <h3 className="text-lg font-bold mb-4 text-white">Sentiment</h3>
                     <div className="flex items-center justify-center h-32">
-                      <div className="text-6xl font-bold bg-gradient-to-r from-blue-600 to-cyan-500 bg-clip-text text-transparent">
+                      <div className="text-4xl sm:text-5xl font-bold bg-gradient-to-r from-blue-600 to-cyan-500 bg-clip-text text-transparent">
                         {entries.length > 0 ? Math.round((entries.reduce((a, e) => a + e.sentiment, 0) / entries.length) * 100) : 0}
                       </div>
                     </div>
@@ -394,7 +394,7 @@ export default function JournalPage() {
                   <div className="bg-orange-500/10 backdrop-blur-xl rounded-3xl p-6 border border-orange-200/20">
                     <h3 className="text-lg font-bold mb-4 text-white">Energy</h3>
                     <div className="flex items-center justify-center h-32">
-                      <div className="text-6xl font-bold bg-gradient-to-r from-orange-600 to-yellow-500 bg-clip-text text-transparent">
+                      <div className="text-4xl sm:text-5xl font-bold bg-gradient-to-r from-orange-600 to-yellow-500 bg-clip-text text-transparent">
                         {entries.length > 0 ? Math.round(entries.reduce((a, e) => a + e.energy, 0) / entries.length) : 0}
                       </div>
                     </div>
@@ -411,7 +411,7 @@ export default function JournalPage() {
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
-                className="fixed inset-0 bg-black/60 backdrop-blur-md z-50 flex items-center justify-center p-8"
+                className="fixed inset-0 bg-black/60 backdrop-blur-md z-50 flex items-center justify-center p-5 sm:p-8"
                 onClick={(e) => e.target === e.currentTarget && setIsWriting(false)}
               >
                 <motion.div
@@ -435,7 +435,7 @@ export default function JournalPage() {
                     </div>
                   </div>
 
-                  <div className="p-8 overflow-y-auto max-h-[calc(90vh-200px)]">
+                  <div className="p-6 sm:p-8 overflow-y-auto max-h-[calc(90vh-200px)]">
                     <div className="mb-6">
                       <label className="text-sm font-semibold mb-3 flex items-center gap-2 text-white">Mood</label>
                       <div className="grid grid-cols-6 gap-3">
@@ -575,7 +575,7 @@ export default function JournalPage() {
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
-                className="fixed inset-0 bg-black/60 backdrop-blur-md z-50 flex items-center justify-center p-8"
+                className="fixed inset-0 bg-black/60 backdrop-blur-md z-50 flex items-center justify-center p-5 sm:p-8"
                 onClick={(e) => e.target === e.currentTarget && setViewingEntry(null)}
               >
                 <motion.div
@@ -609,7 +609,7 @@ export default function JournalPage() {
                           </div>
                         </div>
 
-                        <div className="p-8 overflow-y-auto max-h-[calc(90vh-300px)]">
+                        <div className="p-6 sm:p-8 overflow-y-auto max-h-[calc(90vh-300px)]">
                           <p className="text-gray-200 text-lg leading-relaxed mb-6 whitespace-pre-wrap">{viewingEntry.content}</p>
 
                           {viewingEntry.tags.length > 0 && (
@@ -652,7 +652,7 @@ export default function JournalPage() {
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
-                className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
+                className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-7"
               >
                 {filteredEntries.map((entry, index) => {
                   const mood = MOODS.find(m => m.id === entry.mood);
@@ -671,8 +671,8 @@ export default function JournalPage() {
                       }}
                     >
                       <div className={`bg-gradient-to-br ${mood?.gradient} p-1 rounded-3xl`}>
-                        <div className="bg-gray-900 rounded-3xl p-5">
-                          <div className="flex items-start justify-between mb-3">
+                        <div className="bg-gray-900 rounded-3xl p-6">
+                          <div className="flex items-start justify-between mb-4">
                             <div className="flex items-center gap-3">
                               <div className={`w-10 h-10 rounded-xl bg-gradient-to-br ${mood?.gradient} flex items-center justify-center`}>
                                 <MoodIcon className="w-5 h-5 text-white" />
@@ -691,10 +691,10 @@ export default function JournalPage() {
                             {entry.title}
                           </h3>
 
-                          <p className="text-gray-300 mb-3 line-clamp-3 text-sm">{entry.content}</p>
+                          <p className="text-gray-300 mb-4 line-clamp-3 text-sm">{entry.content}</p>
 
                           {entry.tags.length > 0 && (
-                            <div className="flex flex-wrap gap-1.5 mb-3">
+                            <div className="flex flex-wrap gap-2 mb-4">
                               {entry.tags.slice(0, 3).map((tag, i) => (
                                 <span key={i} className="px-2.5 py-1 bg-purple-900/30 text-purple-200 rounded-full text-xs">#{tag}</span>
                               ))}
@@ -721,13 +721,13 @@ export default function JournalPage() {
             )}
 
             {viewMode === 'timeline' && (
-              <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="relative">
+              <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="relative space-y-2">
                 <div className="absolute left-8 top-0 bottom-0 w-1 bg-gradient-to-b from-purple-600 via-pink-500 to-orange-500" />
                 {filteredEntries.map((entry, index) => {
                   const mood = MOODS.find(m => m.id === entry.mood);
                   const MoodIcon = mood?.icon || Star;
                   return (
-                    <motion.div key={entry.id} initial={{ opacity: 0, x: -50 }} animate={{ opacity: 1, x: 0 }} className="relative pl-20 pb-12 cursor-pointer" onClick={() => { playClickSound(); setViewingEntry(entry); }}>
+                    <motion.div key={entry.id} initial={{ opacity: 0, x: -50 }} animate={{ opacity: 1, x: 0 }} className="relative pl-20 pb-14 cursor-pointer" onClick={() => { playClickSound(); setViewingEntry(entry); }}>
                       <div className={`absolute left-5 top-6 w-10 h-10 rounded-full bg-gradient-to-r ${mood?.gradient} flex items-center justify-center z-10`}>
                         <MoodIcon className="w-5 h-5 text-white" />
                       </div>
@@ -738,7 +738,7 @@ export default function JournalPage() {
                             <Heart className={`w-5 h-5 ${entry.isFavorite ? 'fill-red-500 text-red-500' : 'text-gray-400'}`} />
                           </button>
                         </div>
-                        <h3 className="text-2xl font-bold bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent mb-2">{entry.title}</h3>
+                        <h3 className="text-xl font-bold bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent mb-2">{entry.title}</h3>
                         <p className="text-gray-300">{entry.content}</p>
                       </div>
                     </motion.div>
@@ -748,14 +748,14 @@ export default function JournalPage() {
             )}
 
             {viewMode === 'calendar' && (
-              <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="bg-gray-900 rounded-3xl p-8">
+              <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="bg-gray-900 rounded-3xl p-6">
                 <div className="flex items-center justify-between mb-8">
                   <button onClick={() => { playClickSound(); changeMonth(-1); }} className="p-2 rounded-lg bg-gray-800 cursor-pointer">
                     <svg className="w-6 h-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
                     </svg>
                   </button>
-                  <h3 className="text-3xl font-bold bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent">
+                  <h3 className="text-2xl font-bold bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent">
                     {selectedDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
                   </h3>
                   <button onClick={() => { playClickSound(); changeMonth(1); }} className="p-2 rounded-lg bg-gray-800 cursor-pointer">
@@ -810,7 +810,7 @@ export default function JournalPage() {
           </AnimatePresence>
 
           {filteredEntries.length === 0 && (
-            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="text-center py-20">
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="text-center mt-8 sm:mt-10 py-20">
               <BookOpen className="w-24 h-24 text-purple-400 mx-auto mb-6" />
               <h3 className="text-2xl font-bold text-white mb-2">No entries yet</h3>
               <p className="text-gray-400 mb-6">Start journaling today</p>

@@ -278,20 +278,20 @@ export default function TermsPage() {
             animate={{ opacity: 1, y: 0 }}
             className="mb-12"
           >
-            <div className="bg-gradient-to-br from-red-600/20 to-pink-600/20 backdrop-blur-lg border border-red-600/30 rounded-3xl p-8 md:p-12">
+            <div className="bg-gradient-to-br from-red-600/20 to-pink-600/20 backdrop-blur-lg border border-red-600/30 rounded-3xl p-6 md:p-8">
               <motion.div
                 initial={{ scale: 0 }}
                 animate={{ scale: 1 }}
                 transition={{ type: 'spring', stiffness: 200, damping: 15 }}
-                className="w-20 h-20 bg-gradient-to-br from-red-600 to-pink-600 rounded-2xl flex items-center justify-center mb-6"
+                className="w-16 h-16 bg-gradient-to-br from-red-600 to-pink-600 rounded-2xl flex items-center justify-center mb-5"
               >
-                <FileText className="w-10 h-10 text-white" />
+                <FileText className="w-8 h-8 text-white" />
               </motion.div>
               
-              <h2 className="text-4xl md:text-5xl font-bold text-white mb-4">
+              <h2 className="text-3xl md:text-4xl font-bold text-white mb-3">
                 Terms of Service
               </h2>
-              <p className="text-lg text-neutral-300 leading-relaxed">
+              <p className="text-base md:text-lg text-neutral-300 leading-relaxed">
                 Welcome to Reveura. These terms and conditions outline the rules and regulations for the use of our mental wellness platform. By accessing this service, we assume you accept these terms and conditions in full.
               </p>
               
@@ -405,14 +405,14 @@ export default function TermsPage() {
             initial={{ opacity: 0, y: 30 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.5 }}
-            className="mt-12 bg-gradient-to-r from-red-600/20 to-pink-600/20 backdrop-blur-lg border border-red-600/30 rounded-2xl p-8 text-center"
+            className="mt-12 bg-gradient-to-r from-red-600/20 to-pink-600/20 backdrop-blur-lg border border-red-600/30 rounded-2xl p-6 text-center"
           >
             <Sparkles className="w-12 h-12 text-red-500 mx-auto mb-4" />
             <h3 className="text-2xl font-bold text-white mb-2">
               Questions about our Terms?
             </h3>
             <p className="text-neutral-300 mb-6">
-              We're here to help. Contact our support team anytime.
+              We&apos;re here to help. Contact our support team anytime.
             </p>
             <motion.button
               onClick={() => router.push('/')}

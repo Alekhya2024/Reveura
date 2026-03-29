@@ -14,26 +14,28 @@
   --muted: #525252;
   --muted-foreground: #a3a3a3;
   
+  --font-primary: 'Outfit', sans-serif;
+
   /* Typography System - Mood-Optimized */
-  --font-display: 'Playfair Display', serif;
-  --font-heading: 'Sora', sans-serif;
-  --font-subheading: 'DM Sans', sans-serif;
-  --font-body: 'Outfit', sans-serif;
-  --font-accent: 'Poppins', sans-serif;
+  --font-display: var(--font-primary);
+  --font-heading: var(--font-primary);
+  --font-subheading: var(--font-primary);
+  --font-body: var(--font-primary);
+  --font-accent: var(--font-primary);
   
   /* Font Sizes - Hierarchical & Readable */
-  --font-display-lg: 3.5rem;
-  --font-display-md: 2.8rem;
-  --font-display-sm: 2.2rem;
-  --font-heading-lg: 1.875rem;
-  --font-heading-md: 1.5rem;
-  --font-heading-sm: 1.25rem;
-  --font-subheading-lg: 1.125rem;
-  --font-subheading-md: 1rem;
-  --font-body-lg: 1.0625rem;
-  --font-body-md: 0.95rem;
-  --font-body-sm: 0.875rem;
-  --font-body-xs: 0.75rem;
+  --font-display-lg: 3.2rem;
+  --font-display-md: 2.5rem;
+  --font-display-sm: 2rem;
+  --font-heading-lg: 1.7rem;
+  --font-heading-md: 1.35rem;
+  --font-heading-sm: 1.15rem;
+  --font-subheading-lg: 1.05rem;
+  --font-subheading-md: 0.95rem;
+  --font-body-lg: 1rem;
+  --font-body-md: 0.92rem;
+  --font-body-sm: 0.84rem;
+  --font-body-xs: 0.72rem;
   
   /* Line Heights - Wellness-focused readability */
   --leading-tight: 1.2;
@@ -106,7 +108,7 @@ html {
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: var(--font-body);
+  font-family: var(--font-primary);
   font-size: var(--font-body-md);
   line-height: var(--leading-normal);
   letter-spacing: var(--tracking-normal);
@@ -115,6 +117,11 @@ body {
   overflow-x: hidden;
   transition: background-color 0.3s ease, color 0.3s ease;
   font-weight: 400;
+}
+
+/* Keep one font across the whole application, including inline styled text. */
+*, *::before, *::after {
+  font-family: var(--font-primary) !important;
 }
 
 /* Display Typography - Playfair Display (Premium, Elegant) */
@@ -234,7 +241,7 @@ p, .text-body-lg {
 .font-medium { font-weight: 500; }
 .font-semibold { font-weight: 600; }
 .font-bold { font-weight: 700; }
-.font-black { font-weight: 900; }
+.font-black { font-weight: 800; }
 
 /* Letter Spacing Utilities */
 .tracking-normal { letter-spacing: var(--tracking-normal); }

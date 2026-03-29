@@ -14,6 +14,11 @@ import {
   SquareStack, Grid3X3, Shuffle, Puzzle
 } from 'lucide-react';
 import DashboardLayout from '@/components/DashboardLayout';
+import {
+  getStoredMoodGameStats,
+  saveStoredMoodGameStats,
+  type MoodGameStats,
+} from '@/lib/userData';
 
 // ==================== GAME 1: BUBBLE POP MOOD THERAPY ====================
 interface Bubble {
@@ -75,6 +80,7 @@ interface ReflexTarget {
 export default function MoodGamesPage() {
   const [selectedGame, setSelectedGame] = useState<GameType>(null);
   const [soundEnabled, setSoundEnabled] = useState(false);
+  const [gameStats, setGameStats] = useState<MoodGameStats>(() => getStoredMoodGameStats());
   
   // Bubble Pop Game State
   const [bubbles, setBubbles] = useState<Bubble[]>([]);
@@ -116,6 +122,18 @@ export default function MoodGamesPage() {
   const [lastSpawnTime, setLastSpawnTime] = useState(Date.now());
   
   const gameAreaRef = useRef<HTMLDivElement>(null);
+  const bubbleWasActive = useRef(false);
+  const memoryWasActive = useRef(false);
+  const zenWasActive = useRef(false);
+  const reflexWasActive = useRef(false);
+
+  const updateGameStats = useCallback((updater: (current: MoodGameStats) => MoodGameStats) => {
+    setGameStats((current) => {
+      const next = updater(current);
+      saveStoredMoodGameStats(next);
+      return next;
+    });
+  }, []);
 
   // ==================== BUBBLE POP GAME LOGIC ====================
   const spawnBubble = useCallback(() => {
@@ -204,6 +222,10 @@ export default function MoodGamesPage() {
     setBubbleCombo(0);
     setMoodMeter(50);
     setBubbleGameActive(true);
+    updateGameStats((current) => ({
+      ...current,
+      bubbleSessions: current.bubbleSessions + 1,
+    }));
   };
 
   // ==================== MEMORY PATTERN GAME LOGIC ====================
@@ -236,6 +258,10 @@ export default function MoodGamesPage() {
     setMemoryScore(0);
     setPlayerPattern([]);
     setMemoryGameActive(true);
+    updateGameStats((current) => ({
+      ...current,
+      memorySessions: current.memorySessions + 1,
+    }));
     const pattern = generatePattern(1);
     setMemoryPattern(pattern);
     setTimeout(() => showPattern(pattern), 500);
@@ -319,7 +345,11 @@ export default function MoodGamesPage() {
     setZenTime(0);
     setZenLocked(false);
     setZenGameActive(true);
-  }, []);
+    updateGameStats((current) => ({
+      ...current,
+      zenSessions: current.zenSessions + 1,
+    }));
+  }, [updateGameStats]);
 
   const handleZenTileClick = (index: number) => {
     if (zenLocked || zenTiles[index].revealed || zenTiles[index].matched) return;
@@ -448,7 +478,78 @@ export default function MoodGamesPage() {
     setReflexMisses(0);
     setReflexBestReaction(null);
     setReflexGameActive(true);
+    updateGameStats((current) => ({
+      ...current,
+      reflexSessions: current.reflexSessions + 1,
+    }));
   };
+
+  useEffect(() => {
+    if (bubbleGameActive) {
+      bubbleWasActive.current = true;
+      return;
+    }
+
+    if (bubbleWasActive.current && bubbleTimeLeft === 0) {
+      updateGameStats((current) => ({
+        ...current,
+        bubbleBestScore: Math.max(current.bubbleBestScore, bubbleScore),
+      }));
+      bubbleWasActive.current = false;
+    }
+  }, [bubbleGameActive, bubbleScore, bubbleTimeLeft, updateGameStats]);
+
+  useEffect(() => {
+    if (memoryGameActive) {
+      memoryWasActive.current = true;
+      return;
+    }
+
+    if (memoryWasActive.current && memoryScore > 0) {
+      updateGameStats((current) => ({
+        ...current,
+        memoryBestScore: Math.max(current.memoryBestScore, memoryScore),
+        memoryBestLevel: Math.max(current.memoryBestLevel, memoryLevel),
+      }));
+      memoryWasActive.current = false;
+    }
+  }, [memoryGameActive, memoryLevel, memoryScore, updateGameStats]);
+
+  useEffect(() => {
+    if (zenGameActive) {
+      zenWasActive.current = true;
+      return;
+    }
+
+    if (zenWasActive.current && zenMatches === ZEN_COLORS.length) {
+      updateGameStats((current) => ({
+        ...current,
+        zenBestTime: current.zenBestTime === null ? zenTime : Math.min(current.zenBestTime, zenTime),
+        zenBestMoves: current.zenBestMoves === null ? zenMoves : Math.min(current.zenBestMoves, zenMoves),
+      }));
+      zenWasActive.current = false;
+    }
+  }, [zenGameActive, zenMatches, zenMoves, zenTime, updateGameStats]);
+
+  useEffect(() => {
+    if (reflexGameActive) {
+      reflexWasActive.current = true;
+      return;
+    }
+
+    if (reflexWasActive.current && reflexTimeLeft === 0) {
+      updateGameStats((current) => ({
+        ...current,
+        reflexBestScore: Math.max(current.reflexBestScore, reflexScore),
+        reflexBestReaction: current.reflexBestReaction === null
+          ? reflexBestReaction
+          : reflexBestReaction === null
+            ? current.reflexBestReaction
+            : Math.min(current.reflexBestReaction, reflexBestReaction),
+      }));
+      reflexWasActive.current = false;
+    }
+  }, [reflexBestReaction, reflexGameActive, reflexScore, reflexTimeLeft, updateGameStats]);
 
   return (
     <DashboardLayout>
@@ -479,7 +580,7 @@ export default function MoodGamesPage() {
           ))}
         </div>
 
-        <div className="relative z-10 p-8">
+        <div className="relative z-10 p-4 sm:p-6 md:p-8">
           {/* Header */}
           <motion.div
             initial={{ opacity: 0, y: -30 }}
@@ -489,14 +590,14 @@ export default function MoodGamesPage() {
             <div className="flex items-center justify-between">
               <div>
                 <motion.h1 
-                  className="text-5xl font-bold bg-gradient-to-r from-pink-400 via-purple-400 to-cyan-400 bg-clip-text text-transparent mb-2"
+                  className="text-3xl sm:text-4xl md:text-5xl font-bold bg-gradient-to-r from-pink-400 via-purple-400 to-cyan-400 bg-clip-text text-transparent mb-2"
                   animate={{ backgroundPosition: ['0% 50%', '100% 50%', '0% 50%'] }}
                   transition={{ duration: 5, repeat: Infinity }}
                   style={{ backgroundSize: '200% 200%' }}
                 >
                   Mood Games Arena
                 </motion.h1>
-                <p className="text-gray-300 text-lg flex items-center gap-2">
+                <p className="text-gray-300 text-sm sm:text-base md:text-lg flex items-center gap-2">
                   <Gamepad2 className="w-5 h-5 text-purple-400" />
                   Play games to boost your mood and reduce stress
                 </p>
@@ -520,14 +621,14 @@ export default function MoodGamesPage() {
                 initial={{ opacity: 0, scale: 0.9 }}
                 animate={{ opacity: 1, scale: 1 }}
                 exit={{ opacity: 0, scale: 0.9 }}
-                className="grid grid-cols-2 gap-6 max-w-6xl mx-auto"
+                className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-5 max-w-6xl mx-auto"
               >
                 {/* Bubble Pop Game Card */}
                 <motion.button
                   whileHover={{ scale: 1.03, y: -10 }}
                   whileTap={{ scale: 0.97 }}
                   onClick={() => setSelectedGame('bubbles')}
-                  className="relative p-8 rounded-3xl overflow-hidden group bg-gradient-to-br from-pink-500/20 via-purple-500/20 to-blue-500/20 backdrop-blur-xl border border-white/20 text-left"
+                  className="relative p-6 rounded-3xl overflow-hidden group bg-gradient-to-br from-pink-500/20 via-purple-500/20 to-blue-500/20 backdrop-blur-xl border border-white/20 text-left"
                 >
                   {/* Animated gradient overlay */}
                   <motion.div
@@ -563,11 +664,11 @@ export default function MoodGamesPage() {
                   </div>
 
                   <div className="relative z-10">
-                    <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-pink-500 to-purple-600 flex items-center justify-center mb-6 shadow-xl shadow-pink-500/30">
-                      <MousePointer2 className="w-10 h-10 text-white" />
+                    <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-pink-500 to-purple-600 flex items-center justify-center mb-5 shadow-xl shadow-pink-500/30">
+                      <MousePointer2 className="w-8 h-8 text-white" />
                     </div>
                     
-                    <h2 className="text-3xl font-bold text-white mb-3">Bubble Pop Therapy</h2>
+                    <h2 className="text-2xl font-bold text-white mb-3">Bubble Pop Therapy</h2>
                     <p className="text-gray-300 mb-4">Pop mood bubbles to boost happiness! Avoid stress bubbles and build combos for bonus points.</p>
                     
                     <div className="flex items-center gap-4 text-sm text-gray-400">
@@ -590,7 +691,7 @@ export default function MoodGamesPage() {
                   whileHover={{ scale: 1.03, y: -10 }}
                   whileTap={{ scale: 0.97 }}
                   onClick={() => setSelectedGame('memory')}
-                  className="relative p-8 rounded-3xl overflow-hidden group bg-gradient-to-br from-blue-500/20 via-cyan-500/20 to-green-500/20 backdrop-blur-xl border border-white/20 text-left"
+                  className="relative p-6 rounded-3xl overflow-hidden group bg-gradient-to-br from-blue-500/20 via-cyan-500/20 to-green-500/20 backdrop-blur-xl border border-white/20 text-left"
                 >
                   {/* Animated gradient overlay */}
                   <motion.div
@@ -631,11 +732,11 @@ export default function MoodGamesPage() {
                   </div>
 
                   <div className="relative z-10">
-                    <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-blue-500 to-cyan-600 flex items-center justify-center mb-6 shadow-xl shadow-blue-500/30">
-                      <Brain className="w-10 h-10 text-white" />
+                    <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-blue-500 to-cyan-600 flex items-center justify-center mb-5 shadow-xl shadow-blue-500/30">
+                      <Brain className="w-8 h-8 text-white" />
                     </div>
                     
-                    <h2 className="text-3xl font-bold text-white mb-3">Mind Pattern Match</h2>
+                    <h2 className="text-2xl font-bold text-white mb-3">Mind Pattern Match</h2>
                     <p className="text-gray-300 mb-4">Train your brain with pattern sequences! Watch, memorize, and repeat the arrows to level up.</p>
                     
                     <div className="flex items-center gap-4 text-sm text-gray-400">
@@ -658,7 +759,7 @@ export default function MoodGamesPage() {
                   whileHover={{ scale: 1.03, y: -10 }}
                   whileTap={{ scale: 0.97 }}
                   onClick={() => setSelectedGame('zen')}
-                  className="relative p-8 rounded-3xl overflow-hidden group bg-gradient-to-br from-teal-500/20 via-emerald-500/20 to-green-500/20 backdrop-blur-xl border border-white/20 text-left"
+                  className="relative p-6 rounded-3xl overflow-hidden group bg-gradient-to-br from-teal-500/20 via-emerald-500/20 to-green-500/20 backdrop-blur-xl border border-white/20 text-left"
                 >
                   <motion.div
                     className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity"
@@ -694,11 +795,11 @@ export default function MoodGamesPage() {
                   </div>
 
                   <div className="relative z-10">
-                    <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-teal-500 to-emerald-600 flex items-center justify-center mb-6 shadow-xl shadow-teal-500/30">
-                      <Grid3X3 className="w-10 h-10 text-white" />
+                    <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-teal-500 to-emerald-600 flex items-center justify-center mb-5 shadow-xl shadow-teal-500/30">
+                      <Grid3X3 className="w-8 h-8 text-white" />
                     </div>
                     
-                    <h2 className="text-3xl font-bold text-white mb-3">Zen Color Match</h2>
+                    <h2 className="text-2xl font-bold text-white mb-3">Zen Color Match</h2>
                     <p className="text-gray-300 mb-4">Find matching color pairs in this calming memory game. Clear the board with minimal moves!</p>
                     
                     <div className="flex items-center gap-4 text-sm text-gray-400">
@@ -721,7 +822,7 @@ export default function MoodGamesPage() {
                   whileHover={{ scale: 1.03, y: -10 }}
                   whileTap={{ scale: 0.97 }}
                   onClick={() => setSelectedGame('reflex')}
-                  className="relative p-8 rounded-3xl overflow-hidden group bg-gradient-to-br from-orange-500/20 via-red-500/20 to-yellow-500/20 backdrop-blur-xl border border-white/20 text-left"
+                  className="relative p-6 rounded-3xl overflow-hidden group bg-gradient-to-br from-orange-500/20 via-red-500/20 to-yellow-500/20 backdrop-blur-xl border border-white/20 text-left"
                 >
                   <motion.div
                     className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity"
@@ -761,11 +862,11 @@ export default function MoodGamesPage() {
                   </div>
 
                   <div className="relative z-10">
-                    <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-orange-500 to-red-600 flex items-center justify-center mb-6 shadow-xl shadow-orange-500/30">
-                      <Crosshair className="w-10 h-10 text-white" />
+                    <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-orange-500 to-red-600 flex items-center justify-center mb-5 shadow-xl shadow-orange-500/30">
+                      <Crosshair className="w-8 h-8 text-white" />
                     </div>
                     
-                    <h2 className="text-3xl font-bold text-white mb-3">Reflex Reactor</h2>
+                    <h2 className="text-2xl font-bold text-white mb-3">Reflex Reactor</h2>
                     <p className="text-gray-300 mb-4">Test your reaction speed! Click green targets quickly, avoid the red ones. How fast can you react?</p>
                     
                     <div className="flex items-center gap-4 text-sm text-gray-400">

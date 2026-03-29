@@ -136,7 +136,7 @@ export default function InspirationPage() {
             initial={{ opacity: 0, y: 30 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8 }}
-            className="text-center mb-20"
+            className="text-center mb-14 sm:mb-16"
           >
             <motion.div
               initial={{ scale: 0 }}
@@ -144,11 +144,11 @@ export default function InspirationPage() {
               transition={{ delay: 0.2, type: "spring", stiffness: 100 }}
               className="inline-block mb-4 sm:mb-6"
             >
-              <div className={`text-5xl sm:text-6xl md:text-7xl filter drop-shadow-xl`}>
+              <div className={`text-4xl sm:text-5xl md:text-6xl filter drop-shadow-xl`}>
                 ✨
               </div>
             </motion.div>
-            <h1 className={`font-black mb-3 sm:mb-4 tracking-tight text-3xl sm:text-4xl md:text-5xl ${
+            <h1 className={`font-extrabold mb-3 sm:mb-4 tracking-tight text-2xl sm:text-3xl md:text-4xl ${
               theme === 'dark'
                 ? 'bg-gradient-to-r from-white via-purple-200 to-blue-200 bg-clip-text text-transparent'
                 : 'bg-gradient-to-r from-gray-900 via-purple-700 to-blue-700 bg-clip-text text-transparent'
@@ -198,7 +198,7 @@ export default function InspirationPage() {
             exit={{ opacity: 0, y: -20 }}
             className="mb-16"
           >
-            <div className={`relative px-8 py-8 rounded-3xl overflow-hidden backdrop-blur-xl`}>
+            <div className={`relative px-5 sm:px-8 py-6 sm:py-8 rounded-3xl overflow-hidden backdrop-blur-xl`}>
               {/* Animated background gradient */}
               <motion.div
                 animate={{
@@ -220,8 +220,8 @@ export default function InspirationPage() {
                 <div className="flex items-center justify-between">
                   <div>
                     <div className="flex items-center gap-4 mb-3">
-                      <span className="text-5xl">{currentSection.emoji}</span>
-                      <h2 className={`text-4xl md:text-5xl font-black ${currentSection.textColor}`}>
+                      <span className="text-4xl">{currentSection.emoji}</span>
+                      <h2 className={`text-3xl md:text-4xl font-extrabold ${currentSection.textColor}`}>
                         {currentSection.theme}
                       </h2>
                     </div>
@@ -232,7 +232,7 @@ export default function InspirationPage() {
                   <motion.div
                     animate={{ y: [0, 10, 0] }}
                     transition={{ duration: 2, repeat: Infinity }}
-                    className={`text-5xl`}
+                    className={`text-4xl`}
                   >
                     💫
                   </motion.div>
@@ -260,7 +260,7 @@ export default function InspirationPage() {
                   className="group cursor-pointer"
                 >
                   <motion.div
-                    className={`relative h-full p-8 rounded-3xl backdrop-blur-xl transition-all overflow-hidden ${
+                    className={`relative h-full p-6 rounded-3xl backdrop-blur-xl transition-all overflow-hidden ${
                       theme === 'dark'
                         ? 'bg-neutral-900/40 border border-neutral-700/50 hover:border-neutral-600/80'
                         : 'bg-white/40 border border-white/50 hover:border-white/80'
@@ -355,7 +355,7 @@ export default function InspirationPage() {
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -20 }}
-                className={`relative px-8 py-10 rounded-3xl backdrop-blur-xl overflow-hidden ${
+                className={`relative px-6 sm:px-8 py-6 sm:py-8 rounded-3xl backdrop-blur-xl overflow-hidden ${
                   theme === 'dark'
                     ? 'bg-gradient-to-r from-red-950/40 to-pink-950/40 border border-red-900/50'
                     : 'bg-gradient-to-r from-red-100/40 to-pink-100/40 border border-red-200/50'
@@ -376,12 +376,12 @@ export default function InspirationPage() {
                       <motion.div
                         animate={{ scale: [1, 1.2, 1] }}
                         transition={{ duration: 2, repeat: Infinity }}
-                        className="text-6xl"
+                        className="text-5xl"
                       >
                         ❤️
                       </motion.div>
                       <div>
-                        <h3 className={`text-3xl font-black ${
+                        <h3 className={`text-2xl font-extrabold ${
                           theme === 'dark' ? 'text-red-300' : 'text-red-700'
                         }`}>
                           {favorites.length}
@@ -465,7 +465,7 @@ export default function InspirationPage() {
               </motion.button>
 
               {/* Content */}
-              <div className="relative px-8 md:px-12 py-12 md:py-16">
+              <div className="relative px-6 md:px-10 py-10 md:py-12">
                 {/* Quote badge */}
                 <motion.div
                   initial={{ scale: 0, y: -20 }}
@@ -492,7 +492,7 @@ export default function InspirationPage() {
                     initial={{ opacity: 0, scale: 0 }}
                     animate={{ opacity: 1, scale: 1 }}
                     transition={{ delay: 0.25 }}
-                    className={`text-6xl md:text-7xl font-black opacity-10 ${quoteSections[activeSection].accentColor}`}
+                    className={`text-5xl md:text-6xl font-extrabold opacity-10 ${quoteSections[activeSection].accentColor}`}
                   >
                     "
                   </motion.div>
@@ -504,7 +504,7 @@ export default function InspirationPage() {
                     transition={{ delay: 0.3, duration: 0.6 }}
                     className="space-y-4"
                   >
-                    <p className={`text-2xl md:text-4xl font-black leading-relaxed ${
+                    <p className={`text-xl md:text-3xl font-bold leading-relaxed ${
                       theme === 'dark' ? 'text-white' : 'text-gray-900'
                     }`}>
                       {selectedQuote.text}

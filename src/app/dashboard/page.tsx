@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import DashboardLayout from '@/components/DashboardLayout';
 import MotivationalCarousel from '@/components/MotivationalCarousel';
@@ -12,31 +12,40 @@ import {
   Calendar,
   Plus,
   ArrowRight,
-  Heart,
-  Zap,
   Star,
-  Target,
   Sparkles,
-  Hand,
   BarChart3,
   Trophy,
   Bed,
   Meh,
   Check,
   Circle,
+  type LucideIcon,
 } from 'lucide-react';
-import { mockMoodData, mockHabits, mockSleepData, mockJournalEntries, moods } from '@/lib/mockData';
+import { moods } from '@/lib/mockData';
 import { format } from 'date-fns';
 import Link from 'next/link';
-import Image from 'next/image';
 import FloatingImages from '@/components/FloatingImages';
 import { TourButton } from '@/components/NewTourButton';
 import { OnboardaTour } from '@/components/OnboardaTour';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useSoundEffects } from '@/hooks/useSoundEffects';
+import {
+  calculateHabitStreak,
+  getStoredHabits,
+  getStoredJournalEntries,
+  getStoredMoodEntries,
+  getStoredSleepEntries,
+  saveStoredHabits,
+  upsertMoodEntry,
+  type StoredHabit,
+  type StoredJournalEntry,
+  type StoredMoodEntry,
+  type StoredSleepEntry,
+} from '@/lib/userData';
 
 const getMoodIcon = (iconName: string) => {
-  const icons: Record<string, any> = {
+  const icons: Record<string, LucideIcon> = {
     Sparkles,
     Smile,
     Meh,
@@ -47,19 +56,37 @@ const getMoodIcon = (iconName: string) => {
 
 export default function Dashboard() {
   const [selectedMood, setSelectedMood] = useState<string | null>(null);
+  const [moodEntries, setMoodEntries] = useState<StoredMoodEntry[]>([]);
+  const [habits, setHabits] = useState<StoredHabit[]>([]);
+  const [journalEntries, setJournalEntries] = useState<StoredJournalEntry[]>([]);
+  const [sleepEntries, setSleepEntries] = useState<StoredSleepEntry[]>([]);
   const { theme } = useTheme();
   const { playClickSound, playWaterDropSound } = useSoundEffects();
   const today = format(new Date(), 'yyyy-MM-dd');
-  const todayMood = mockMoodData.find(m => m.date === today);
+  const todayMood = moodEntries.find((moodEntry) => moodEntry.date === today);
 
   // Calculate stats
-  const totalHabitsToday = mockHabits.length;
-  const completedHabitsToday = mockHabits.filter(h => 
-    h.completed.includes(today)
+  const totalHabitsToday = habits.length;
+  const completedHabitsToday = habits.filter((habit) => 
+    habit.completed.includes(today)
   ).length;
   
-  const avgSleep = (mockSleepData.reduce((sum, s) => sum + s.hours, 0) / mockSleepData.length).toFixed(1);
-  const currentStreak = Math.max(...mockHabits.map(h => h.streak));
+  const avgSleep = sleepEntries.length
+    ? (sleepEntries.reduce((sum, sleepEntry) => sum + sleepEntry.hours, 0) / sleepEntries.length).toFixed(1)
+    : '0.0';
+  const currentStreak = habits.length
+    ? Math.max(...habits.map((habit) => habit.streak ?? calculateHabitStreak(habit.completed)))
+    : 0;
+  const recentJournalEntries = journalEntries.slice().sort((left, right) => new Date(right.date).getTime() - new Date(left.date).getTime()).slice(0, 3);
+
+  useEffect(() => {
+    queueMicrotask(() => {
+      setMoodEntries(getStoredMoodEntries());
+      setHabits(getStoredHabits());
+      setJournalEntries(getStoredJournalEntries());
+      setSleepEntries(getStoredSleepEntries());
+    });
+  }, []);
 
   const container = {
     hidden: { opacity: 0 },
@@ -76,6 +103,36 @@ export default function Dashboard() {
     show: { opacity: 1, y: 0 }
   };
 
+  const handleMoodSelect = (mood: string) => {
+    playClickSound();
+    setSelectedMood(mood);
+    setMoodEntries(upsertMoodEntry({ date: today, mood }));
+  };
+
+  const toggleHabitFromDashboard = (habitId: string) => {
+    playWaterDropSound();
+    const nextHabits = habits.map((habit) => {
+      if (habit.id !== habitId) {
+        return habit;
+      }
+
+      const completed = habit.completed.includes(today)
+        ? habit.completed.filter((entryDate) => entryDate !== today)
+        : [...habit.completed, today];
+      const streak = calculateHabitStreak(completed);
+
+      return {
+        ...habit,
+        completed,
+        streak,
+        bestStreak: Math.max(habit.bestStreak ?? 0, streak),
+      };
+    });
+
+    setHabits(nextHabits);
+    saveStoredHabits(nextHabits);
+  };
+
   return (
     <DashboardLayout>
       <FloatingImages images={['1.5.jpg', '2.5.jpg', '3.5.jpg']} />
@@ -85,7 +142,7 @@ export default function Dashboard() {
         variants={container}
         initial="hidden"
         animate="show"
-        className="space-y-6 relative z-10"
+        className="space-y-8 lg:space-y-10 relative z-10"
       >
         {/* Motivational Carousel - Auto-rotating with quotes and images */}
         <motion.div variants={item} className="dashboard-header">
@@ -93,10 +150,10 @@ export default function Dashboard() {
         </motion.div>
 
         {/* Quick Stats */}
-        <motion.div variants={item} className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+        <motion.div variants={item} className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
           <motion.div
             whileHover={{ scale: 1.02, y: -4 }}
-            className="mood-selector bg-gradient-to-br from-neutral-900 to-black border border-red-900/30 rounded-2xl p-4 sm:p-6 shadow-xl backdrop-blur-sm relative overflow-hidden group"
+            className="mood-selector bg-gradient-to-br from-neutral-900 to-black border border-red-900/30 rounded-2xl p-5 sm:p-7 shadow-xl backdrop-blur-sm relative overflow-hidden group"
           >
             <motion.div
               className="absolute inset-0 bg-gradient-to-r from-red-500/0 via-red-500/5 to-red-500/0"
@@ -121,7 +178,7 @@ export default function Dashboard() {
                 {todayMood ? <Smile className="w-5 h-5 text-red-400" /> : <Meh className="w-5 h-5 text-gray-400" />}
               </motion.div>
             </div>
-            <h3 className="text-black dark:text-white mb-2" style={{ fontFamily: "var(--font-body)", fontSize: "var(--font-body-sm)" }}>Today's Mood</h3>
+            <h3 className="text-black dark:text-white mb-2" style={{ fontFamily: "var(--font-body)", fontSize: "var(--font-body-sm)" }}>Today&apos;s Mood</h3>
             <p className="text-white font-bold capitalize" style={{ fontFamily: "var(--font-heading)", fontSize: "var(--font-heading-sm)" }}>
               {todayMood ? todayMood.mood : 'Not tracked'}
             </p>
@@ -129,7 +186,7 @@ export default function Dashboard() {
 
           <motion.div
             whileHover={{ scale: 1.02, y: -4 }}
-            className="bg-gradient-to-br from-neutral-900 to-black border border-red-900/30 rounded-2xl p-4 sm:p-6 shadow-xl"
+            className="bg-gradient-to-br from-neutral-900 to-black border border-red-900/30 rounded-2xl p-5 sm:p-7 shadow-xl"
           >
             <div className="flex items-center justify-between mb-4">
               <div className="w-10 h-10 sm:w-12 sm:h-12 bg-red-500/20 rounded-xl flex items-center justify-center">
@@ -147,7 +204,7 @@ export default function Dashboard() {
 
           <motion.div
             whileHover={{ scale: 1.02, y: -4 }}
-            className="bg-gradient-to-br from-neutral-900 to-black border border-red-900/30 rounded-2xl p-4 sm:p-6 shadow-xl"
+            className="bg-gradient-to-br from-neutral-900 to-black border border-red-900/30 rounded-2xl p-5 sm:p-7 shadow-xl"
           >
             <div className="flex items-center justify-between mb-4">
               <div className="w-10 h-10 sm:w-12 sm:h-12 bg-red-500/20 rounded-xl flex items-center justify-center">
@@ -163,7 +220,7 @@ export default function Dashboard() {
 
           <motion.div
             whileHover={{ scale: 1.02, y: -4 }}
-            className="bg-gradient-to-br from-neutral-900 to-black border border-red-900/30 rounded-2xl p-4 sm:p-6 shadow-xl"
+            className="bg-gradient-to-br from-neutral-900 to-black border border-red-900/30 rounded-2xl p-5 sm:p-7 shadow-xl"
           >
             <div className="flex items-center justify-between mb-4">
               <div className="w-10 h-10 sm:w-12 sm:h-12 bg-red-500/20 rounded-xl flex items-center justify-center">
@@ -179,7 +236,7 @@ export default function Dashboard() {
         </motion.div>
 
         {/* Mood Tracker */}
-        <motion.div variants={item} className="bg-gradient-to-br from-neutral-900 to-black border border-red-900/30 rounded-2xl p-4 sm:p-6 shadow-xl">
+        <motion.div variants={item} className="bg-gradient-to-br from-neutral-900 to-black border border-red-900/30 rounded-2xl p-5 sm:p-7 shadow-xl">
           <div className="flex items-center justify-between mb-4 sm:mb-6">
             <h2 className="font-bold text-white text-base sm:text-lg" style={{ fontFamily: "var(--font-heading)" }}>
               How are you feeling today?
@@ -195,10 +252,7 @@ export default function Dashboard() {
                   key={mood.value}
                   whileHover={{ scale: 1.1, y: -4 }}
                   whileTap={{ scale: 0.95 }}
-                  onClick={() => {
-                    playClickSound();
-                    setSelectedMood(mood.value);
-                  }}
+                  onClick={() => handleMoodSelect(mood.value)}
                   className={`flex flex-col items-center gap-1 sm:gap-2 p-3 sm:p-4 rounded-xl transition-all duration-300 ${
                     selectedMood === mood.value || (todayMood?.mood === mood.value && !selectedMood)
                       ? `bg-gradient-to-br ${mood.gradient} shadow-lg shadow-red-900/50 border-2 border-white/30`
@@ -215,9 +269,9 @@ export default function Dashboard() {
           </div>
         </motion.div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 sm:gap-8">
           {/* Recent Journal Entries */}
-          <motion.div variants={item} className="bg-gradient-to-br from-neutral-900 to-black border border-red-900/30 rounded-2xl p-4 sm:p-6 shadow-xl">
+          <motion.div variants={item} className="bg-gradient-to-br from-neutral-900 to-black border border-red-900/30 rounded-2xl p-5 sm:p-7 shadow-xl">
             <div className="flex items-center justify-between mb-4 sm:mb-6">
               <h2 className="text-lg sm:text-xl font-bold text-white" style={{ fontFamily: "var(--font-heading)" }}>
                 Recent Journals
@@ -234,8 +288,8 @@ export default function Dashboard() {
               </Link>
             </div>
 
-            <div className="space-y-3">
-              {mockJournalEntries.slice(0, 3).map((entry, index) => (
+            <div className="space-y-4">
+              {recentJournalEntries.length > 0 ? recentJournalEntries.map((entry, index) => (
                 <motion.div
                   key={entry.id}
                   initial={{ opacity: 0, x: -20 }}
@@ -243,7 +297,7 @@ export default function Dashboard() {
                   transition={{ delay: index * 0.1 }}
                   whileHover={{ x: 4 }}
                   onClick={() => playClickSound()}
-                  className="bg-neutral-800/50 border border-neutral-700 rounded-xl p-4 hover:border-red-500/50 transition-all cursor-pointer"
+                  className="bg-neutral-800/50 border border-neutral-700 rounded-xl p-5 hover:border-red-500/50 transition-all cursor-pointer"
                 >
                   <div className="flex items-start justify-between mb-2">
                     <h3 className="text-white font-semibold text-sm">{entry.title}</h3>
@@ -258,14 +312,18 @@ export default function Dashboard() {
                     ))}
                   </div>
                 </motion.div>
-              ))}
+              )) : (
+                <div className="rounded-xl border border-neutral-700 bg-neutral-800/40 p-5 text-sm text-gray-400">
+                  No journal entries yet. Create your first entry to see it on the dashboard.
+                </div>
+              )}
             </div>
 
             <Link href="/journal" onClick={() => playClickSound()}>
               <motion.button
                 whileHover={{ scale: 1.02 }}
                 whileTap={{ scale: 0.98 }}
-                className="w-full mt-4 flex items-center justify-center gap-2 py-3 bg-neutral-800/50 border border-neutral-700 rounded-xl text-gray-300 hover:text-white hover:border-red-500/50 transition-all"
+                className="w-full mt-5 flex items-center justify-center gap-2 py-3.5 bg-neutral-800/50 border border-neutral-700 rounded-xl text-gray-300 hover:text-white hover:border-red-500/50 transition-all"
               >
                 <Plus size={16} />
                 <span className="text-sm font-medium">New Journal Entry</span>
@@ -273,11 +331,11 @@ export default function Dashboard() {
             </Link>
           </motion.div>
 
-          {/* Today's Habits */}
-          <motion.div variants={item} className="bg-gradient-to-br from-neutral-900 to-black border border-red-900/30 rounded-2xl p-6 shadow-xl">
+          {/* Today&apos;s Habits */}
+          <motion.div variants={item} className="bg-gradient-to-br from-neutral-900 to-black border border-red-900/30 rounded-2xl p-5 sm:p-7 shadow-xl">
             <div className="flex items-center justify-between mb-6">
               <h2 className="text-xl font-bold text-white" style={{ fontFamily: "var(--font-heading)" }}>
-                Today's Habits
+                Today&apos;s Habits
               </h2>
               <Link href="/habits" onClick={() => playClickSound()}>
                 <motion.button
@@ -291,8 +349,8 @@ export default function Dashboard() {
               </Link>
             </div>
 
-            <div className="space-y-3">
-              {mockHabits.map((habit, index) => {
+            <div className="space-y-4">
+              {habits.length > 0 ? habits.map((habit, index) => {
                 const isCompleted = habit.completed.includes(today);
                 
                 return (
@@ -302,8 +360,8 @@ export default function Dashboard() {
                     animate={{ opacity: 1, x: 0 }}
                     transition={{ delay: index * 0.1 }}
                     whileHover={{ x: 4 }}
-                    onClick={() => playClickSound()}
-                    className={`flex items-center gap-4 p-4 rounded-xl border transition-all cursor-pointer ${
+                    onClick={() => toggleHabitFromDashboard(habit.id)}
+                    className={`flex items-center gap-4 p-5 rounded-xl border transition-all cursor-pointer ${
                       isCompleted
                         ? 'bg-red-500/10 border-red-500/50'
                         : 'bg-neutral-800/50 border-neutral-700 hover:border-red-500/50'
@@ -324,7 +382,11 @@ export default function Dashboard() {
                     </div>
                   </motion.div>
                 );
-              })}
+              }) : (
+                <div className="rounded-xl border border-neutral-700 bg-neutral-800/40 p-5 text-sm text-gray-400">
+                  No habits yet. Add one from the habits page and it will appear here.
+                </div>
+              )}
             </div>
           </motion.div>
         </div>

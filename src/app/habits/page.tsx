@@ -279,14 +279,14 @@ export default function HabitsPage() {
           ))}
         </div>
 
-        <div className="relative z-10 p-4 sm:p-6 md:p-8">
+        <div className="relative z-10 p-5 sm:p-8 md:p-10">
           {/* Header */}
           <motion.div
             initial={{ opacity: 0, y: -50 }}
             animate={{ opacity: 1, y: 0 }}
-            className="mb-6 sm:mb-8"
+            className="mb-8 sm:mb-10"
           >
-            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-6 sm:mb-8 gap-4">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-7 sm:mb-9 gap-5 sm:gap-6">
               <div>
                 <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold bg-gradient-to-r from-purple-600 via-pink-500 to-orange-500 bg-clip-text text-transparent mb-2">
                   Habit Tracker
@@ -312,10 +312,10 @@ export default function HabitsPage() {
             </div>
 
             {/* Stats */}
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-6">
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-5 mb-8">
               <motion.div
                 whileHover={{ y: -5 }}
-                className="bg-gradient-to-br from-purple-500/10 to-violet-500/10 backdrop-blur-xl rounded-2xl p-4 sm:p-6 border border-purple-200/20"
+                className="bg-gradient-to-br from-purple-500/10 to-violet-500/10 backdrop-blur-xl rounded-2xl p-5 sm:p-7 border border-purple-200/20"
               >
                 <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 sm:gap-3 mb-2">
                   <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-gradient-to-br from-purple-500 to-violet-600 flex items-center justify-center">
@@ -330,7 +330,7 @@ export default function HabitsPage() {
 
               <motion.div
                 whileHover={{ y: -5 }}
-                className="bg-gradient-to-br from-orange-500/10 to-red-500/10 backdrop-blur-xl rounded-2xl p-6 border border-orange-200/20"
+                className="bg-gradient-to-br from-orange-500/10 to-red-500/10 backdrop-blur-xl rounded-2xl p-5 sm:p-7 border border-orange-200/20"
               >
                 <div className="flex items-center gap-3 mb-2">
                   <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-orange-500 to-red-600 flex items-center justify-center">
@@ -338,7 +338,7 @@ export default function HabitsPage() {
                   </div>
                   <div>
                     <p className="text-sm text-gray-400">Best Streak</p>
-                    <p className="text-3xl font-bold text-white">
+                    <p className="text-2xl sm:text-3xl font-bold text-white">
                       {habits.length > 0 ? Math.max(...habits.map(h => h.bestStreak)) : 0}
                     </p>
                   </div>
@@ -347,7 +347,7 @@ export default function HabitsPage() {
 
               <motion.div
                 whileHover={{ y: -5 }}
-                className="bg-gradient-to-br from-green-500/10 to-emerald-500/10 backdrop-blur-xl rounded-2xl p-6 border border-green-200/20"
+                className="bg-gradient-to-br from-green-500/10 to-emerald-500/10 backdrop-blur-xl rounded-2xl p-5 sm:p-7 border border-green-200/20"
               >
                 <div className="flex items-center gap-3 mb-2">
                   <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-green-500 to-emerald-600 flex items-center justify-center">
@@ -355,14 +355,14 @@ export default function HabitsPage() {
                   </div>
                   <div>
                     <p className="text-sm text-gray-400">Completion</p>
-                    <p className="text-3xl font-bold text-white">{getCompletionRate()}%</p>
+                    <p className="text-2xl sm:text-3xl font-bold text-white">{getCompletionRate()}%</p>
                   </div>
                 </div>
               </motion.div>
 
               <motion.div
                 whileHover={{ y: -5 }}
-                className="bg-gradient-to-br from-blue-500/10 to-cyan-500/10 backdrop-blur-xl rounded-2xl p-6 border border-blue-200/20"
+                className="bg-gradient-to-br from-blue-500/10 to-cyan-500/10 backdrop-blur-xl rounded-2xl p-5 sm:p-7 border border-blue-200/20"
               >
                 <div className="flex items-center gap-3 mb-2">
                   <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-blue-500 to-cyan-600 flex items-center justify-center">
@@ -370,7 +370,7 @@ export default function HabitsPage() {
                   </div>
                   <div>
                     <p className="text-sm text-gray-400">Total Points</p>
-                    <p className="text-3xl font-bold text-white">
+                    <p className="text-2xl sm:text-3xl font-bold text-white">
                       {habits.reduce((sum, h) => sum + h.completed.length * 10, 0)}
                     </p>
                   </div>
@@ -379,7 +379,7 @@ export default function HabitsPage() {
             </div>
 
             {/* View Mode Tabs */}
-            <div className="flex gap-3 mb-6">
+            <div className="flex gap-4 mb-8">
               {[
                 { id: 'week', label: 'Week View', icon: Calendar },
                 { id: 'month', label: 'Month View', icon: Calendar },
@@ -416,7 +416,7 @@ export default function HabitsPage() {
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
-                className="fixed inset-0 bg-black/60 backdrop-blur-md z-50 flex items-center justify-center p-8"
+                className="fixed inset-0 bg-black/60 backdrop-blur-md z-50 flex items-center justify-center p-5 sm:p-8"
                 onClick={(e) => e.target === e.currentTarget && setIsCreating(false)}
               >
                 <motion.div
@@ -445,7 +445,7 @@ export default function HabitsPage() {
                     </div>
                   </div>
 
-                  <div className="p-8 overflow-y-auto max-h-[calc(90vh-200px)]">
+                  <div className="p-6 sm:p-8 overflow-y-auto max-h-[calc(90vh-200px)]">
                     <div className="mb-6">
                       <label className="text-sm font-semibold mb-3 text-white block">Habit Name</label>
                       <input
@@ -563,7 +563,7 @@ export default function HabitsPage() {
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
-                className="space-y-4"
+                className="space-y-5"
               >
                 {habits.map((habit, index) => {
                   const IconComponent = HABIT_ICONS.find(i => i.id === habit.icon)?.icon || Brain;
@@ -578,9 +578,9 @@ export default function HabitsPage() {
                       animate={{ opacity: 1, x: 0 }}
                       transition={{ delay: index * 0.05 }}
                       whileHover={{ scale: 1.01 }}
-                      className="bg-gray-900/80 backdrop-blur-xl rounded-2xl p-6 border border-gray-800"
+                      className="bg-gray-900/80 backdrop-blur-xl rounded-2xl p-7 border border-gray-800"
                     >
-                      <div className="flex items-center gap-4 mb-4">
+                      <div className="flex items-center gap-5 mb-5">
                         <div className={`w-14 h-14 rounded-xl bg-gradient-to-br ${CATEGORY_COLORS[habit.category]} flex items-center justify-center`}>
                           <IconComponent className="w-7 h-7 text-white" />
                         </div>
@@ -660,7 +660,7 @@ export default function HabitsPage() {
                         </div>
                       </div>
 
-                      <div className="flex gap-2">
+                      <div className="flex gap-3">
                         {last7Days.map((day) => {
                           const isCompleted = habit.completed.includes(day.date);
                           const isToday = day.date === new Date().toISOString().split('T')[0];
@@ -703,9 +703,9 @@ export default function HabitsPage() {
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
-                className="bg-gray-900/80 backdrop-blur-xl rounded-3xl p-8"
+                className="bg-gray-900/80 backdrop-blur-xl rounded-3xl p-7"
               >
-                <div className="flex items-center justify-between mb-6">
+                <div className="flex items-center justify-between mb-7">
                   <button
                     onClick={() => {
                       const newDate = new Date(selectedDate);
@@ -786,7 +786,7 @@ export default function HabitsPage() {
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
-                className="grid grid-cols-2 gap-6"
+                className="grid grid-cols-1 md:grid-cols-2 gap-7"
               >
                 {habits.sort((a, b) => b.streak - a.streak).map((habit, index) => {
                   const IconComponent = HABIT_ICONS.find(i => i.id === habit.icon)?.icon || Brain;
@@ -798,9 +798,9 @@ export default function HabitsPage() {
                       animate={{ opacity: 1, scale: 1 }}
                       transition={{ delay: index * 0.1 }}
                       whileHover={{ scale: 1.02 }}
-                      className={`bg-gradient-to-br ${CATEGORY_COLORS[habit.category]}/10 backdrop-blur-xl rounded-3xl p-8 border border-gray-800`}
+                      className={`bg-gradient-to-br ${CATEGORY_COLORS[habit.category]}/10 backdrop-blur-xl rounded-3xl p-7 border border-gray-800`}
                     >
-                      <div className="flex items-center justify-between mb-6">
+                      <div className="flex items-center justify-between mb-7">
                         <div className={`w-16 h-16 rounded-2xl bg-gradient-to-br ${CATEGORY_COLORS[habit.category]} flex items-center justify-center`}>
                           <IconComponent className="w-8 h-8 text-white" />
                         </div>
@@ -810,14 +810,14 @@ export default function HabitsPage() {
                       </div>
 
                       <h3 className="text-2xl font-bold text-white mb-2">{habit.name}</h3>
-                      <p className="text-gray-400 text-sm mb-6">{habit.description}</p>
+                      <p className="text-gray-400 text-sm mb-7">{habit.description}</p>
 
                       <div className="flex items-center justify-between mb-4">
                         <div>
                           <p className="text-sm text-gray-400">Current Streak</p>
                           <div className="flex items-center gap-2">
                             <Flame className={`w-8 h-8 ${habit.streak > 0 ? 'text-orange-500' : 'text-gray-500'}`} />
-                            <span className="text-4xl font-bold text-white">{habit.streak}</span>
+                            <span className="text-3xl font-bold text-white">{habit.streak}</span>
                           </div>
                         </div>
 
