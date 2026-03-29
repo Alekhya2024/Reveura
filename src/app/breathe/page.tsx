@@ -1,17 +1,11 @@
 'use client';
 
-import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { motion, AnimatePresence, useAnimation } from 'framer-motion';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import {
-  Gamepad2, Sparkles, Heart, Zap, Play, Pause, RotateCcw,
-  Volume2, VolumeX, Trophy, TrendingUp, Clock, Star,
-  Target, Flame, Circle, Wind, Smile, Frown, Meh,
-  Sun, Cloud, CloudRain, Lightbulb, Brain, Timer,
-  ArrowUp, ArrowDown, ArrowLeft, ArrowRight, CheckCircle2,
-  XCircle, Award, Gem, Crown, Rocket, Music, Palette,
-  MousePointer2, Hand, Zap as Lightning, Waves, Leaf,
-  Mountain, Droplets, Focus, RefreshCw, Eye, Crosshair,
-  SquareStack, Grid3X3, Shuffle, Puzzle
+  ArrowLeft, Play, Trophy, Timer, Brain,
+  Zap, CheckCircle2, XCircle, Eye,
+  Smile, Grid3X3, RotateCcw, Star,
 } from 'lucide-react';
 import DashboardLayout from '@/components/DashboardLayout';
 import {
@@ -20,1534 +14,833 @@ import {
   type MoodGameStats,
 } from '@/lib/userData';
 
-// ==================== GAME 1: BUBBLE POP MOOD THERAPY ====================
-interface Bubble {
-  id: number;
-  x: number;
-  y: number;
-  size: number;
-  color: string;
-  mood: string;
-  points: number;
-  speed: number;
-}
-
-const BUBBLE_MOODS = [
-  { mood: 'joy', color: 'from-yellow-400 to-orange-400', icon: Sun, points: 10 },
-  { mood: 'calm', color: 'from-blue-400 to-cyan-400', icon: Cloud, points: 15 },
-  { mood: 'love', color: 'from-pink-400 to-rose-400', icon: Heart, points: 20 },
-  { mood: 'energy', color: 'from-green-400 to-emerald-400', icon: Zap, points: 25 },
-  { mood: 'wisdom', color: 'from-purple-400 to-indigo-400', icon: Brain, points: 30 },
-  { mood: 'stress', color: 'from-red-500 to-red-600', icon: CloudRain, points: -10 },
+// ─── Static lookup data — Math.random() NEVER called at module/render level ──
+const STROOP = [
+  { word: 'RED',    hex: '#ef4444' },
+  { word: 'BLUE',   hex: '#3b82f6' },
+  { word: 'GREEN',  hex: '#22c55e' },
+  { word: 'YELLOW', hex: '#eab308' },
+  { word: 'PURPLE', hex: '#a855f7' },
+  { word: 'ORANGE', hex: '#f97316' },
 ];
 
-// ==================== GAME 2: PATTERN MEMORY SEQUENCE ====================
-interface PatternStep {
-  direction: 'up' | 'down' | 'left' | 'right';
-  color: string;
-}
-
-const DIRECTIONS = [
-  { direction: 'up', icon: ArrowUp, color: 'from-blue-500 to-cyan-500', key: 'ArrowUp' },
-  { direction: 'down', icon: ArrowDown, color: 'from-green-500 to-emerald-500', key: 'ArrowDown' },
-  { direction: 'left', icon: ArrowLeft, color: 'from-purple-500 to-pink-500', key: 'ArrowLeft' },
-  { direction: 'right', icon: ArrowRight, color: 'from-orange-500 to-yellow-500', key: 'ArrowRight' },
+const EMOJI_POOLS: string[][] = [
+  ['😄', '😢', '😠', '😱', '😍', '😴'],
+  ['💪', '🎯', '🌟', '💎', '🔥', '🏆'],
+  ['🌸', '🌺', '🌻', '🌹', '🌼', '🌷'],
 ];
 
-type GameType = 'bubbles' | 'memory' | 'zen' | 'reflex' | null;
+type GameType = 'stroop' | 'tiles' | 'reaction' | 'emoji' | null;
 
-// ==================== GAME 3: ZEN GARDEN COLORS ====================
-const ZEN_COLORS = [
-  { name: 'Serenity', color: 'from-blue-400 to-cyan-300', hex: '#60a5fa' },
-  { name: 'Nature', color: 'from-green-400 to-emerald-300', hex: '#4ade80' },
-  { name: 'Sunset', color: 'from-orange-400 to-yellow-300', hex: '#fb923c' },
-  { name: 'Blossom', color: 'from-pink-400 to-rose-300', hex: '#f472b6' },
-  { name: 'Twilight', color: 'from-purple-400 to-indigo-300', hex: '#a78bfa' },
-  { name: 'Ocean', color: 'from-teal-400 to-cyan-300', hex: '#2dd4bf' },
-];
+const TILE_COUNT = 9;
+const REACTION_ROUNDS = 5;
 
-// ==================== GAME 4: REFLEX REACTION ====================
-interface ReflexTarget {
-  id: number;
-  x: number;
-  y: number;
-  size: number;
-  color: string;
-  isGood: boolean;
-  lifetime: number;
+// Helpers — only call from event handlers / effects, NEVER during render
+const ri = (max: number) => Math.floor(Math.random() * max);
+
+function shuffle<T>(arr: T[]): T[] {
+  const a = [...arr];
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = ri(i + 1);
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
 }
 
+function pickN<T>(arr: T[], n: number): T[] {
+  return shuffle(arr).slice(0, n);
+}
+
+function avgArr(arr: number[]) {
+  return arr.length ? Math.round(arr.reduce((a, b) => a + b, 0) / arr.length) : 0;
+}
+
+// ─── Component ───────────────────────────────────────────────────────────────
 export default function MoodGamesPage() {
-  const [selectedGame, setSelectedGame] = useState<GameType>(null);
-  const [soundEnabled, setSoundEnabled] = useState(false);
-  const [gameStats, setGameStats] = useState<MoodGameStats>(() => getStoredMoodGameStats());
-  
-  // Bubble Pop Game State
-  const [bubbles, setBubbles] = useState<Bubble[]>([]);
-  const [bubbleScore, setBubbleScore] = useState(0);
-  const [bubbleTimeLeft, setBubbleTimeLeft] = useState(60);
-  const [bubbleGameActive, setBubbleGameActive] = useState(false);
-  const [bubbleCombo, setBubbleCombo] = useState(0);
-  const [poppedEffects, setPoppedEffects] = useState<{id: number; x: number; y: number; points: number}[]>([]);
-  const [moodMeter, setMoodMeter] = useState(50);
-  
-  // Memory Pattern Game State
-  const [memoryPattern, setMemoryPattern] = useState<PatternStep[]>([]);
-  const [playerPattern, setPlayerPattern] = useState<PatternStep[]>([]);
-  const [memoryLevel, setMemoryLevel] = useState(1);
-  const [memoryScore, setMemoryScore] = useState(0);
-  const [isShowingPattern, setIsShowingPattern] = useState(false);
-  const [currentShowIndex, setCurrentShowIndex] = useState(-1);
-  const [memoryGameActive, setMemoryGameActive] = useState(false);
-  const [memoryMessage, setMemoryMessage] = useState('');
-  const [activeDirection, setActiveDirection] = useState<string | null>(null);
-  
-  // Zen Garden Game State
-  const [zenTiles, setZenTiles] = useState<{id: number; name: string; color: string; revealed: boolean; matched: boolean}[]>([]);
-  const [zenFirstPick, setZenFirstPick] = useState<number | null>(null);
-  const [zenMoves, setZenMoves] = useState(0);
-  const [zenMatches, setZenMatches] = useState(0);
-  const [zenGameActive, setZenGameActive] = useState(false);
-  const [zenTime, setZenTime] = useState(0);
-  const [zenLocked, setZenLocked] = useState(false);
-  
-  // Reflex Reaction Game State
-  const [reflexTargets, setReflexTargets] = useState<ReflexTarget[]>([]);
-  const [reflexScore, setReflexScore] = useState(0);
-  const [reflexTimeLeft, setReflexTimeLeft] = useState(30);
-  const [reflexGameActive, setReflexGameActive] = useState(false);
-  const [reflexHits, setReflexHits] = useState(0);
-  const [reflexMisses, setReflexMisses] = useState(0);
-  const [reflexBestReaction, setReflexBestReaction] = useState<number | null>(null);
-  const [lastSpawnTime, setLastSpawnTime] = useState(Date.now());
-  
-  const gameAreaRef = useRef<HTMLDivElement>(null);
-  const bubbleWasActive = useRef(false);
-  const memoryWasActive = useRef(false);
-  const zenWasActive = useRef(false);
-  const reflexWasActive = useRef(false);
+  const [selected, setSelected] = useState<GameType>(null);
 
-  const updateGameStats = useCallback((updater: (current: MoodGameStats) => MoodGameStats) => {
-    setGameStats((current) => {
-      const next = updater(current);
-      saveStoredMoodGameStats(next);
-      return next;
-    });
-  }, []);
-
-  // ==================== BUBBLE POP GAME LOGIC ====================
-  const spawnBubble = useCallback(() => {
-    const moodType = BUBBLE_MOODS[Math.floor(Math.random() * BUBBLE_MOODS.length)];
-    const newBubble: Bubble = {
-      id: Date.now() + Math.random(),
-      x: Math.random() * 80 + 10,
-      y: 110,
-      size: Math.random() * 40 + 50,
-      color: moodType.color,
-      mood: moodType.mood,
-      points: moodType.points,
-      speed: Math.random() * 1.5 + 0.8,
-    };
-    setBubbles(prev => [...prev, newBubble]);
-  }, []);
-
-  const popBubble = (bubble: Bubble, e: React.MouseEvent) => {
-    e.stopPropagation();
-    
-    // Add popped effect
-    setPoppedEffects(prev => [...prev, {
-      id: bubble.id,
-      x: bubble.x,
-      y: bubble.y,
-      points: bubble.points
-    }]);
-    
-    // Remove bubble
-    setBubbles(prev => prev.filter(b => b.id !== bubble.id));
-    
-    // Update score and combo
-    if (bubble.points > 0) {
-      setBubbleCombo(prev => prev + 1);
-      const comboMultiplier = Math.floor(bubbleCombo / 5) + 1;
-      setBubbleScore(prev => prev + bubble.points * comboMultiplier);
-      setMoodMeter(prev => Math.min(100, prev + 5));
-    } else {
-      setBubbleCombo(0);
-      setBubbleScore(prev => Math.max(0, prev + bubble.points));
-      setMoodMeter(prev => Math.max(0, prev - 10));
-    }
-    
-    // Remove effect after animation
-    setTimeout(() => {
-      setPoppedEffects(prev => prev.filter(p => p.id !== bubble.id));
-    }, 1000);
-  };
-
-  // Bubble game timer and spawning
+  // Stats — saved via effect, never inside a setState updater
+  const [stats, setStats] = useState<MoodGameStats>(getStoredMoodGameStats);
+  const statsMounted = useRef(false);
   useEffect(() => {
-    if (!bubbleGameActive) return;
-    
-    const spawnInterval = setInterval(() => {
-      spawnBubble();
-    }, 800);
-    
-    const moveInterval = setInterval(() => {
-      setBubbles(prev => prev
-        .map(b => ({ ...b, y: b.y - b.speed }))
-        .filter(b => b.y > -20)
-      );
-    }, 50);
-    
-    const timerInterval = setInterval(() => {
-      setBubbleTimeLeft(prev => {
-        if (prev <= 1) {
-          setBubbleGameActive(false);
-          return 0;
-        }
-        return prev - 1;
-      });
-    }, 1000);
-    
-    return () => {
-      clearInterval(spawnInterval);
-      clearInterval(moveInterval);
-      clearInterval(timerInterval);
-    };
-  }, [bubbleGameActive, spawnBubble]);
+    if (!statsMounted.current) { statsMounted.current = true; return; }
+    saveStoredMoodGameStats(stats);
+  }, [stats]);
 
-  const startBubbleGame = () => {
-    setBubbles([]);
-    setBubbleScore(0);
-    setBubbleTimeLeft(60);
-    setBubbleCombo(0);
-    setMoodMeter(50);
-    setBubbleGameActive(true);
-    updateGameStats((current) => ({
-      ...current,
-      bubbleSessions: current.bubbleSessions + 1,
-    }));
-  };
+  // ══════════════════════════════════════════════════════════════════════
+  // GAME 1 — Stroop Color Challenge
+  // ══════════════════════════════════════════════════════════════════════
+  const [sActive, setSActive] = useState(false);
+  const [sTime,   setSTime]   = useState(30);
+  const [sScore,  setSScore]  = useState(0);
+  const [sStreak, setSStreak] = useState(0);
+  const [sBest,   setSBest]   = useState(0);
+  const [sItem,   setSItem]   = useState<{ word: string; hex: string; isMatch: boolean }>({
+    word: 'RED', hex: '#ef4444', isMatch: true,
+  });
+  const [sFb, setSFb] = useState<'correct' | 'wrong' | null>(null);
 
-  // ==================== MEMORY PATTERN GAME LOGIC ====================
-  const generatePattern = useCallback((level: number) => {
-    const newPattern: PatternStep[] = [];
-    for (let i = 0; i < level + 2; i++) {
-      const dir = DIRECTIONS[Math.floor(Math.random() * 4)];
-      newPattern.push({ direction: dir.direction as 'up' | 'down' | 'left' | 'right', color: dir.color });
-    }
-    return newPattern;
+  const genStroop = useCallback(() => {
+    const w = STROOP[ri(STROOP.length)];
+    const match = Math.random() < 0.5;
+    const others = STROOP.filter(s => s.hex !== w.hex);
+    const c = match ? w : others[ri(others.length)];
+    setSItem({ word: w.word, hex: c.hex, isMatch: match });
   }, []);
 
-  const showPattern = async (pattern: PatternStep[]) => {
-    setIsShowingPattern(true);
-    setMemoryMessage('Watch the pattern...');
-    
-    for (let i = 0; i < pattern.length; i++) {
-      setCurrentShowIndex(i);
-      await new Promise(resolve => setTimeout(resolve, 600));
-      setCurrentShowIndex(-1);
-      await new Promise(resolve => setTimeout(resolve, 200));
-    }
-    
-    setIsShowingPattern(false);
-    setMemoryMessage('Your turn! Repeat the pattern');
-  };
+  const startStroop = useCallback(() => {
+    setSScore(0); setSStreak(0); setSBest(0); setSTime(30); setSFb(null);
+    genStroop();
+    setSActive(true);
+    setStats(s => ({ ...s, bubbleSessions: s.bubbleSessions + 1 }));
+  }, [genStroop]);
 
-  const startMemoryGame = () => {
-    setMemoryLevel(1);
-    setMemoryScore(0);
-    setPlayerPattern([]);
-    setMemoryGameActive(true);
-    updateGameStats((current) => ({
-      ...current,
-      memorySessions: current.memorySessions + 1,
-    }));
-    const pattern = generatePattern(1);
-    setMemoryPattern(pattern);
-    setTimeout(() => showPattern(pattern), 500);
-  };
+  const answerStroop = useCallback((sayMatch: boolean) => {
+    if (!sActive || sFb) return;
+    const ok = sayMatch === sItem.isMatch;
+    setSFb(ok ? 'correct' : 'wrong');
+    const ns = ok ? sStreak + 1 : 0;
+    setSStreak(ns);
+    setSBest(p => Math.max(p, ns));
+    setSScore(p => p + (ok ? 10 + sStreak * 2 : 0));
+    setTimeout(() => { setSFb(null); genStroop(); }, 400);
+  }, [sActive, sFb, sItem.isMatch, sStreak, genStroop]);
 
-  const handleDirectionClick = (direction: 'up' | 'down' | 'left' | 'right') => {
-    if (isShowingPattern || !memoryGameActive) return;
-    
-    setActiveDirection(direction);
-    setTimeout(() => setActiveDirection(null), 200);
-    
-    const newPlayerPattern = [...playerPattern, { direction, color: '' }];
-    setPlayerPattern(newPlayerPattern);
-    
-    // Check if correct
-    const currentIndex = newPlayerPattern.length - 1;
-    if (memoryPattern[currentIndex].direction !== direction) {
-      // Wrong!
-      setMemoryMessage('Oops! Game Over');
-      setMemoryGameActive(false);
+  useEffect(() => {
+    if (!sActive) return;
+    const t = setInterval(() => setSTime(p => (p <= 1 ? 0 : p - 1)), 1000);
+    return () => clearInterval(t);
+  }, [sActive]);
+
+  useEffect(() => {
+    if (!sActive || sTime !== 0) return;
+    const tid = setTimeout(() => {
+      setSActive(false);
+      setStats(s => ({ ...s, bubbleBestScore: Math.max(s.bubbleBestScore, sScore) }));
+    }, 0);
+    return () => clearTimeout(tid);
+  }, [sActive, sTime, sScore]);
+
+  // ══════════════════════════════════════════════════════════════════════
+  // GAME 2 — Memory Tiles
+  // ══════════════════════════════════════════════════════════════════════
+  const [tPhase,  setTPhase]  = useState<'idle' | 'showing' | 'input' | 'done'>('idle');
+  const [tLevel,  setTLevel]  = useState(1);
+  const [tScore,  setTScore]  = useState(0);
+  const [tTarget, setTTarget] = useState<number[]>([]);
+  const [tPlayer, setTPlayer] = useState<number[]>([]);
+  const [tLit,    setTLit]    = useState<number | null>(null);
+  const [tFb,     setTFb]     = useState<'correct' | 'wrong' | null>(null);
+  const tIDs = useRef<ReturnType<typeof setTimeout>[]>([]);
+
+  const clearTIds = useCallback(() => {
+    tIDs.current.forEach(clearTimeout);
+    tIDs.current = [];
+  }, []);
+
+  const flashSeq = useCallback((tiles: number[]) => {
+    clearTIds();
+    setTPhase('showing');
+    setTLit(null);
+    let d = 400;
+    tiles.forEach(tile => {
+      tIDs.current.push(setTimeout(() => setTLit(tile), d));
+      d += 700;
+      tIDs.current.push(setTimeout(() => setTLit(null), d - 150));
+    });
+    tIDs.current.push(setTimeout(() => {
+      setTPhase('input');
+      setTPlayer([]);
+    }, d + 300));
+  }, [clearTIds]);
+
+  const startTiles = useCallback(() => {
+    clearTIds();
+    setTFb(null);
+    const lvl = 1;
+    const tiles = pickN(Array.from({ length: TILE_COUNT }, (_, i) => i), lvl + 2);
+    setTLevel(lvl);
+    setTScore(0);
+    setTTarget(tiles);
+    setStats(s => ({ ...s, memorySessions: s.memorySessions + 1 }));
+    tIDs.current.push(setTimeout(() => flashSeq(tiles), 300));
+  }, [clearTIds, flashSeq]);
+
+  const tapTile = useCallback((idx: number) => {
+    if (tPhase !== 'input' || tPlayer.includes(idx)) return;
+    const np = [...tPlayer, idx];
+    const pos = np.length - 1;
+    if (tTarget[pos] !== idx) {
+      setTPlayer(np);
+      setTFb('wrong');
+      setTPhase('done');
+      clearTIds();
       return;
     }
-    
-    // Check if completed pattern
-    if (newPlayerPattern.length === memoryPattern.length) {
-      const pointsEarned = memoryLevel * 100;
-      setMemoryScore(prev => prev + pointsEarned);
-      setMemoryMessage(`Perfect! +${pointsEarned} points`);
-      
-      // Next level
-      setTimeout(() => {
-        const nextLevel = memoryLevel + 1;
-        setMemoryLevel(nextLevel);
-        setPlayerPattern([]);
-        const pattern = generatePattern(nextLevel);
-        setMemoryPattern(pattern);
-        showPattern(pattern);
-      }, 1500);
+    setTPlayer(np);
+    if (np.length === tTarget.length) {
+      const ns = tScore + (tLevel + 2) * 50;
+      const nl = tLevel + 1;
+      setTScore(ns);
+      setTFb('correct');
+      setTLevel(nl);
+      setStats(s => ({
+        ...s,
+        memoryBestScore: Math.max(s.memoryBestScore, ns),
+        memoryBestLevel: Math.max(s.memoryBestLevel, nl),
+      }));
+      const nt = pickN(Array.from({ length: TILE_COUNT }, (_, i) => i), nl + 2);
+      setTTarget(nt);
+      clearTIds();
+      tIDs.current.push(setTimeout(() => {
+        setTFb(null);
+        flashSeq(nt);
+      }, 900));
     }
-  };
+  }, [tPhase, tPlayer, tTarget, tLevel, tScore, clearTIds, flashSeq]);
 
-  // Keyboard controls for memory game
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (!memoryGameActive || isShowingPattern) return;
-      
-      const dirMap: Record<string, 'up' | 'down' | 'left' | 'right'> = {
-        'ArrowUp': 'up',
-        'ArrowDown': 'down',
-        'ArrowLeft': 'left',
-        'ArrowRight': 'right',
-      };
-      
-      if (dirMap[e.key]) {
-        handleDirectionClick(dirMap[e.key]);
-      }
-    };
-    
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [memoryGameActive, isShowingPattern, playerPattern, memoryPattern, memoryLevel]);
+  useEffect(() => () => { tIDs.current.forEach(clearTimeout); }, []);
 
-  const getMoodEmoji = () => {
-    if (moodMeter >= 80) return { icon: Sun, label: 'Radiant', color: 'text-yellow-400' };
-    if (moodMeter >= 60) return { icon: Smile, label: 'Happy', color: 'text-green-400' };
-    if (moodMeter >= 40) return { icon: Meh, label: 'Neutral', color: 'text-gray-400' };
-    if (moodMeter >= 20) return { icon: Frown, label: 'Low', color: 'text-orange-400' };
-    return { icon: CloudRain, label: 'Stressed', color: 'text-red-400' };
-  };
+  // ══════════════════════════════════════════════════════════════════════
+  // GAME 3 — Reaction Speed
+  // ══════════════════════════════════════════════════════════════════════
+  type RPhase = 'idle' | 'waiting' | 'go' | 'result' | 'toosoon' | 'done';
+  const [rPhase,   setRPhase]   = useState<RPhase>('idle');
+  const [rResults, setRResults] = useState<number[]>([]);
+  const [rCurrent, setRCurrent] = useState<number | null>(null);
+  const rAt  = useRef(0);
+  const rTid = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // ==================== ZEN GARDEN GAME LOGIC ====================
-  const initZenGame = useCallback(() => {
-    const colors = [...ZEN_COLORS, ...ZEN_COLORS];
-    const shuffled = colors
-      .map((c, i) => ({ ...c, id: i, revealed: false, matched: false }))
-      .sort(() => Math.random() - 0.5);
-    setZenTiles(shuffled);
-    setZenFirstPick(null);
-    setZenMoves(0);
-    setZenMatches(0);
-    setZenTime(0);
-    setZenLocked(false);
-    setZenGameActive(true);
-    updateGameStats((current) => ({
-      ...current,
-      zenSessions: current.zenSessions + 1,
-    }));
-  }, [updateGameStats]);
+  const clearR = useCallback(() => {
+    if (rTid.current) { clearTimeout(rTid.current); rTid.current = null; }
+  }, []);
 
-  const handleZenTileClick = (index: number) => {
-    if (zenLocked || zenTiles[index].revealed || zenTiles[index].matched) return;
-    
-    const newTiles = zenTiles.map((tile, i) => 
-      i === index ? { ...tile, revealed: true } : tile
-    );
-    setZenTiles(newTiles);
-    
-    if (zenFirstPick === null) {
-      setZenFirstPick(index);
-    } else {
-      setZenMoves(prev => prev + 1);
-      setZenLocked(true);
-      
-      const firstTile = zenTiles[zenFirstPick];
-      const secondTile = zenTiles[index];
-      
-      if (firstTile.name === secondTile.name) {
-        // Match found!
-        setTimeout(() => {
-          setZenTiles(prev => prev.map((tile, i) => 
-            i === zenFirstPick || i === index ? { ...tile, matched: true } : tile
-          ));
-          setZenMatches(prev => {
-            const newMatches = prev + 1;
-            if (newMatches === ZEN_COLORS.length) {
-              setZenGameActive(false);
-            }
-            return newMatches;
-          });
-          setZenFirstPick(null);
-          setZenLocked(false);
-        }, 600);
+  const scheduleGo = useCallback(() => {
+    const wait = 1200 + Math.random() * 3000;
+    rTid.current = setTimeout(() => {
+      rAt.current = Date.now();
+      setRPhase('go');
+    }, wait);
+  }, []);
+
+  const startReaction = useCallback(() => {
+    clearR();
+    setRResults([]);
+    setRCurrent(null);
+    setRPhase('waiting');
+    setStats(s => ({ ...s, reflexSessions: s.reflexSessions + 1 }));
+    scheduleGo();
+  }, [clearR, scheduleGo]);
+
+  const tapReaction = useCallback(() => {
+    if (rPhase === 'idle' || rPhase === 'done' || rPhase === 'result') return;
+    if (rPhase === 'toosoon') return;
+    if (rPhase === 'waiting') {
+      clearR();
+      setRPhase('toosoon');
+      rTid.current = setTimeout(() => {
+        setRPhase('waiting');
+        scheduleGo();
+      }, 1500);
+      return;
+    }
+    clearR();
+    const ms = Date.now() - rAt.current;
+    setRCurrent(ms);
+    setRResults(prev => {
+      const nr = [...prev, ms];
+      if (nr.length >= REACTION_ROUNDS) {
+        const best = Math.min(...nr);
+        setStats(s => ({
+          ...s,
+          reflexBestReaction: s.reflexBestReaction === null ? best : Math.min(s.reflexBestReaction, best),
+          reflexBestScore: Math.max(s.reflexBestScore, REACTION_ROUNDS * 1000 - avgArr(nr)),
+        }));
+        rTid.current = setTimeout(() => setRPhase('done'), 1500);
       } else {
-        // No match
-        setTimeout(() => {
-          setZenTiles(prev => prev.map((tile, i) => 
-            i === zenFirstPick || i === index ? { ...tile, revealed: false } : tile
-          ));
-          setZenFirstPick(null);
-          setZenLocked(false);
+        rTid.current = setTimeout(() => {
+          setRPhase('waiting');
+          scheduleGo();
         }, 1200);
       }
-    }
-  };
+      return nr;
+    });
+    setRPhase('result');
+  }, [rPhase, clearR, scheduleGo]);
 
-  // Zen game timer
-  useEffect(() => {
-    if (!zenGameActive) return;
-    const timer = setInterval(() => setZenTime(prev => prev + 1), 1000);
-    return () => clearInterval(timer);
-  }, [zenGameActive]);
+  useEffect(() => () => clearR(), [clearR]);
 
-  // ==================== REFLEX REACTION GAME LOGIC ====================
-  const spawnReflexTarget = useCallback(() => {
-    const isGood = Math.random() > 0.25;
-    const newTarget: ReflexTarget = {
-      id: Date.now() + Math.random(),
-      x: Math.random() * 80 + 10,
-      y: Math.random() * 70 + 15,
-      size: Math.random() * 30 + 40,
-      color: isGood ? 'from-green-400 to-emerald-500' : 'from-red-500 to-red-600',
-      isGood,
-      lifetime: Date.now(),
-    };
-    setReflexTargets(prev => [...prev, newTarget]);
-    setLastSpawnTime(Date.now());
+  // ══════════════════════════════════════════════════════════════════════
+  // GAME 4 — Emoji Speed Match
+  // ══════════════════════════════════════════════════════════════════════
+  const [eActive,  setEActive]  = useState(false);
+  const [eTime,    setETime]    = useState(45);
+  const [eScore,   setEScore]   = useState(0);
+  const [eTarget,  setETarget]  = useState('');
+  const [eOptions, setEOptions] = useState<string[]>([]);
+  const [eFb,      setEFb]      = useState<'correct' | 'wrong' | null>(null);
+
+  const genEmoji = useCallback(() => {
+    const pool = EMOJI_POOLS[ri(EMOJI_POOLS.length)];
+    const target = pool[ri(pool.length)];
+    const opts = shuffle([target, ...shuffle(pool.filter(e => e !== target)).slice(0, 5)]);
+    setETarget(target);
+    setEOptions(opts);
   }, []);
 
-  const hitReflexTarget = (target: ReflexTarget, e: React.MouseEvent) => {
-    e.stopPropagation();
-    const reactionTime = Date.now() - target.lifetime;
-    
-    setReflexTargets(prev => prev.filter(t => t.id !== target.id));
-    
-    if (target.isGood) {
-      const points = Math.max(100, 500 - reactionTime);
-      setReflexScore(prev => prev + points);
-      setReflexHits(prev => prev + 1);
-      if (!reflexBestReaction || reactionTime < reflexBestReaction) {
-        setReflexBestReaction(reactionTime);
-      }
-    } else {
-      setReflexScore(prev => Math.max(0, prev - 200));
-      setReflexMisses(prev => prev + 1);
-    }
-  };
+  const startEmoji = useCallback(() => {
+    setEScore(0);
+    setETime(45);
+    setEFb(null);
+    genEmoji();
+    setEActive(true);
+    setStats(s => ({ ...s, zenSessions: s.zenSessions + 1 }));
+  }, [genEmoji]);
 
-  // Reflex game loop
-  useEffect(() => {
-    if (!reflexGameActive) return;
-    
-    const spawnInterval = setInterval(() => {
-      if (reflexTargets.length < 5) {
-        spawnReflexTarget();
-      }
-    }, 600);
-    
-    const cleanupInterval = setInterval(() => {
-      setReflexTargets(prev => prev.filter(t => Date.now() - t.lifetime < 2000));
-    }, 100);
-    
-    const timerInterval = setInterval(() => {
-      setReflexTimeLeft(prev => {
-        if (prev <= 1) {
-          setReflexGameActive(false);
-          return 0;
-        }
-        return prev - 1;
-      });
-    }, 1000);
-    
-    return () => {
-      clearInterval(spawnInterval);
-      clearInterval(cleanupInterval);
-      clearInterval(timerInterval);
-    };
-  }, [reflexGameActive, reflexTargets.length, spawnReflexTarget]);
-
-  const startReflexGame = () => {
-    setReflexTargets([]);
-    setReflexScore(0);
-    setReflexTimeLeft(30);
-    setReflexHits(0);
-    setReflexMisses(0);
-    setReflexBestReaction(null);
-    setReflexGameActive(true);
-    updateGameStats((current) => ({
-      ...current,
-      reflexSessions: current.reflexSessions + 1,
-    }));
-  };
+  const tapEmoji = useCallback((e: string) => {
+    if (!eActive || eFb) return;
+    const ok = e === eTarget;
+    setEFb(ok ? 'correct' : 'wrong');
+    if (ok) setEScore(p => p + 10);
+    setTimeout(() => { setEFb(null); genEmoji(); }, 300);
+  }, [eActive, eFb, eTarget, genEmoji]);
 
   useEffect(() => {
-    if (bubbleGameActive) {
-      bubbleWasActive.current = true;
-      return;
-    }
+    if (!eActive) return;
+    const t = setInterval(() => setETime(p => (p <= 1 ? 0 : p - 1)), 1000);
+    return () => clearInterval(t);
+  }, [eActive]);
 
-    if (bubbleWasActive.current && bubbleTimeLeft === 0) {
-      updateGameStats((current) => ({
-        ...current,
-        bubbleBestScore: Math.max(current.bubbleBestScore, bubbleScore),
+  useEffect(() => {
+    if (!eActive || eTime !== 0) return;
+    const tid = setTimeout(() => {
+      setEActive(false);
+      setStats(s => ({
+        ...s,
+        zenBestTime: s.zenBestTime === null ? eScore : Math.max(s.zenBestTime, eScore),
       }));
-      bubbleWasActive.current = false;
-    }
-  }, [bubbleGameActive, bubbleScore, bubbleTimeLeft, updateGameStats]);
+    }, 0);
+    return () => clearTimeout(tid);
+  }, [eActive, eTime, eScore]);
 
-  useEffect(() => {
-    if (memoryGameActive) {
-      memoryWasActive.current = true;
-      return;
-    }
+  // ─── Universal back ───────────────────────────────────────────────────────
+  const goBack = useCallback(() => {
+    clearR();
+    tIDs.current.forEach(clearTimeout);
+    tIDs.current = [];
+    setSActive(false);
+    setTPhase('idle');
+    setRPhase('idle');
+    setEActive(false);
+    setSelected(null);
+  }, [clearR]);
 
-    if (memoryWasActive.current && memoryScore > 0) {
-      updateGameStats((current) => ({
-        ...current,
-        memoryBestScore: Math.max(current.memoryBestScore, memoryScore),
-        memoryBestLevel: Math.max(current.memoryBestLevel, memoryLevel),
-      }));
-      memoryWasActive.current = false;
-    }
-  }, [memoryGameActive, memoryLevel, memoryScore, updateGameStats]);
+  // ─── Game card metadata ───────────────────────────────────────────────────
+  const GAMES = [
+    {
+      id: 'stroop'   as GameType,
+      title: 'Stroop Challenge',
+      desc: 'A color word appears in colored ink. Tap MATCH if they agree, NO MATCH if they differ.',
+      Icon: Eye,
+      grad: 'from-pink-500 to-rose-600',
+      bg:   'from-pink-500/10 to-rose-500/10',
+      bdr:  'border-pink-500/30',
+      tags: ['Focus', '30 sec', 'Match / No Match'],
+      stat: `Best: ${stats.bubbleBestScore} pts`,
+    },
+    {
+      id: 'tiles'    as GameType,
+      title: 'Memory Tiles',
+      desc: 'Tiles light up in a sequence — remember and tap them back in the same order!',
+      Icon: Grid3X3,
+      grad: 'from-blue-500 to-cyan-600',
+      bg:   'from-blue-500/10 to-cyan-500/10',
+      bdr:  'border-blue-500/30',
+      tags: ['Memory', 'Endless levels', 'Tap to recall'],
+      stat: `Best Level: ${stats.memoryBestLevel}`,
+    },
+    {
+      id: 'reaction' as GameType,
+      title: 'Reaction Speed',
+      desc: 'The circle turns red (wait) then green — tap as fast as you can! 5 rounds.',
+      Icon: Zap,
+      grad: 'from-yellow-400 to-orange-500',
+      bg:   'from-yellow-500/10 to-orange-500/10',
+      bdr:  'border-yellow-500/30',
+      tags: ['Reflexes', '5 rounds', 'Speed test'],
+      stat: stats.reflexBestReaction ? `Best: ${stats.reflexBestReaction} ms` : 'Not played yet',
+    },
+    {
+      id: 'emoji'    as GameType,
+      title: 'Emoji Match',
+      desc: 'A target emoji appears at the top — spot it in the grid and tap it before time runs out!',
+      Icon: Smile,
+      grad: 'from-purple-500 to-indigo-600',
+      bg:   'from-purple-500/10 to-indigo-500/10',
+      bdr:  'border-purple-500/30',
+      tags: ['Speed', '45 sec', 'Find and tap'],
+      stat: `Best: ${stats.zenBestTime ?? 0} pts`,
+    },
+  ];
 
-  useEffect(() => {
-    if (zenGameActive) {
-      zenWasActive.current = true;
-      return;
-    }
-
-    if (zenWasActive.current && zenMatches === ZEN_COLORS.length) {
-      updateGameStats((current) => ({
-        ...current,
-        zenBestTime: current.zenBestTime === null ? zenTime : Math.min(current.zenBestTime, zenTime),
-        zenBestMoves: current.zenBestMoves === null ? zenMoves : Math.min(current.zenBestMoves, zenMoves),
-      }));
-      zenWasActive.current = false;
-    }
-  }, [zenGameActive, zenMatches, zenMoves, zenTime, updateGameStats]);
-
-  useEffect(() => {
-    if (reflexGameActive) {
-      reflexWasActive.current = true;
-      return;
-    }
-
-    if (reflexWasActive.current && reflexTimeLeft === 0) {
-      updateGameStats((current) => ({
-        ...current,
-        reflexBestScore: Math.max(current.reflexBestScore, reflexScore),
-        reflexBestReaction: current.reflexBestReaction === null
-          ? reflexBestReaction
-          : reflexBestReaction === null
-            ? current.reflexBestReaction
-            : Math.min(current.reflexBestReaction, reflexBestReaction),
-      }));
-      reflexWasActive.current = false;
-    }
-  }, [reflexBestReaction, reflexGameActive, reflexScore, reflexTimeLeft, updateGameStats]);
+  const cardBase = 'rounded-3xl p-8 bg-gradient-to-b from-slate-800/80 to-slate-900/80 border border-white/10';
+  const backBtn  = 'flex items-center gap-2 px-6 py-3 bg-white/10 rounded-xl text-white border border-white/20 font-semibold';
 
   return (
     <DashboardLayout>
-      <div className="min-h-screen relative overflow-hidden bg-gradient-to-br from-slate-900 via-indigo-950 to-slate-900">
-        {/* Animated Background */}
-        <div className="absolute inset-0 overflow-hidden pointer-events-none">
-          {[...Array(40)].map((_, i) => (
-            <motion.div
-              key={i}
-              className="absolute rounded-full"
-              style={{
-                width: Math.random() * 6 + 2,
-                height: Math.random() * 6 + 2,
-                background: `rgba(${Math.random() * 100 + 100}, ${Math.random() * 100 + 100}, 255, 0.3)`,
-              }}
-              animate={{
-                x: [Math.random() * 1200, Math.random() * 1200],
-                y: [Math.random() * 800, Math.random() * 800],
-                scale: [0, 1, 0],
-                opacity: [0, 0.6, 0],
-              }}
-              transition={{
-                duration: 10 + Math.random() * 10,
-                repeat: Infinity,
-                delay: Math.random() * 5,
-              }}
-            />
-          ))}
-        </div>
+      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-indigo-950 to-slate-900">
+        <div className="p-5 sm:p-8 md:p-10">
 
-        <div className="relative z-10 p-4 sm:p-6 md:p-8">
           {/* Header */}
-          <motion.div
-            initial={{ opacity: 0, y: -30 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="mb-8"
-          >
-            <div className="flex items-center justify-between">
-              <div>
-                <motion.h1 
-                  className="text-3xl sm:text-4xl md:text-5xl font-bold bg-gradient-to-r from-pink-400 via-purple-400 to-cyan-400 bg-clip-text text-transparent mb-2"
-                  animate={{ backgroundPosition: ['0% 50%', '100% 50%', '0% 50%'] }}
-                  transition={{ duration: 5, repeat: Infinity }}
-                  style={{ backgroundSize: '200% 200%' }}
-                >
-                  Mood Games Arena
-                </motion.h1>
-                <p className="text-gray-300 text-sm sm:text-base md:text-lg flex items-center gap-2">
-                  <Gamepad2 className="w-5 h-5 text-purple-400" />
-                  Play games to boost your mood and reduce stress
-                </p>
-              </div>
-
+          <div className="flex items-center justify-between mb-8">
+            {selected ? (
               <motion.button
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-                onClick={() => setSoundEnabled(!soundEnabled)}
-                className="p-4 bg-white/10 backdrop-blur-xl rounded-2xl border border-white/20 text-white"
+                whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}
+                onClick={goBack}
+                className="flex items-center gap-2 px-5 py-2.5 bg-white/10 rounded-xl text-white border border-white/20 text-sm font-medium"
               >
-                {soundEnabled ? <Volume2 className="w-6 h-6" /> : <VolumeX className="w-6 h-6" />}
+                <ArrowLeft className="w-4 h-4" /> Back to Games
               </motion.button>
-            </div>
-          </motion.div>
+            ) : (
+              <div>
+                <p className="text-2xl sm:text-3xl font-bold text-white mb-1">Mood Games</p>
+                <p className="text-gray-400 text-sm">Play to focus, relax and recharge</p>
+              </div>
+            )}
+          </div>
 
-          {/* Game Selection */}
           <AnimatePresence mode="wait">
-            {!selectedGame && (
+
+            {/* ───────────────── GAME SELECTION ───────────────── */}
+            {!selected && (
               <motion.div
-                initial={{ opacity: 0, scale: 0.9 }}
-                animate={{ opacity: 1, scale: 1 }}
-                exit={{ opacity: 0, scale: 0.9 }}
-                className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-5 max-w-6xl mx-auto"
+                key="sel"
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -20 }}
+                className="grid grid-cols-1 lg:grid-cols-2 gap-5 max-w-4xl mx-auto"
               >
-                {/* Bubble Pop Game Card */}
-                <motion.button
-                  whileHover={{ scale: 1.03, y: -10 }}
-                  whileTap={{ scale: 0.97 }}
-                  onClick={() => setSelectedGame('bubbles')}
-                  className="relative p-6 rounded-3xl overflow-hidden group bg-gradient-to-br from-pink-500/20 via-purple-500/20 to-blue-500/20 backdrop-blur-xl border border-white/20 text-left"
-                >
-                  {/* Animated gradient overlay */}
-                  <motion.div
-                    className="absolute inset-0 bg-gradient-to-r from-pink-500/30 via-purple-500/30 to-cyan-500/30 opacity-0 group-hover:opacity-100 transition-opacity"
-                    animate={{
-                      background: [
-                        'linear-gradient(45deg, rgba(236,72,153,0.3), rgba(168,85,247,0.3), rgba(6,182,212,0.3))',
-                        'linear-gradient(45deg, rgba(6,182,212,0.3), rgba(236,72,153,0.3), rgba(168,85,247,0.3))',
-                      ]
-                    }}
-                    transition={{ duration: 3, repeat: Infinity }}
-                  />
-                  
-                  {/* Floating bubbles preview */}
-                  <div className="absolute inset-0 overflow-hidden pointer-events-none">
-                    {[...Array(10)].map((_, i) => (
-                      <motion.div
-                        key={i}
-                        className="absolute w-8 h-8 rounded-full bg-gradient-to-br from-white/30 to-white/10"
-                        animate={{
-                          y: [100 + i * 20, -50],
-                          x: [20 + i * 30, 40 + i * 25],
-                          scale: [0.5, 1, 0.5],
-                          opacity: [0, 0.7, 0],
-                        }}
-                        transition={{
-                          duration: 4,
-                          repeat: Infinity,
-                          delay: i * 0.3,
-                        }}
-                      />
-                    ))}
-                  </div>
-
-                  <div className="relative z-10">
-                    <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-pink-500 to-purple-600 flex items-center justify-center mb-5 shadow-xl shadow-pink-500/30">
-                      <MousePointer2 className="w-8 h-8 text-white" />
+                {GAMES.map(g => (
+                  <motion.button
+                    key={String(g.id)}
+                    whileHover={{ scale: 1.02, y: -4 }} whileTap={{ scale: 0.98 }}
+                    onClick={() => setSelected(g.id)}
+                    className={`p-6 rounded-3xl text-left bg-gradient-to-br ${g.bg} border ${g.bdr}`}
+                  >
+                    <div className={`w-14 h-14 rounded-2xl bg-gradient-to-br ${g.grad} flex items-center justify-center mb-4 shadow-lg`}>
+                      <g.Icon className="w-7 h-7 text-white" />
                     </div>
-                    
-                    <h2 className="text-2xl font-bold text-white mb-3">Bubble Pop Therapy</h2>
-                    <p className="text-gray-300 mb-4">Pop mood bubbles to boost happiness! Avoid stress bubbles and build combos for bonus points.</p>
-                    
-                    <div className="flex items-center gap-4 text-sm text-gray-400">
-                      <span className="flex items-center gap-1"><Timer className="w-4 h-4" /> 60 seconds</span>
-                      <span className="flex items-center gap-1"><Target className="w-4 h-4" /> Click to pop</span>
-                      <span className="flex items-center gap-1"><Flame className="w-4 h-4" /> Build combos</span>
+                    <p className="text-xl font-bold text-white mb-2">{g.title}</p>
+                    <p className="text-gray-300 text-sm mb-4 leading-relaxed">{g.desc}</p>
+                    <div className="flex flex-wrap gap-2 mb-4">
+                      {g.tags.map(t => (
+                        <span key={t} className="px-2.5 py-1 bg-white/10 text-gray-300 rounded-full text-xs">{t}</span>
+                      ))}
                     </div>
-                    
-                    <motion.div
-                      className="mt-6 inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-gradient-to-r from-pink-500 to-purple-500 text-white font-bold"
-                      whileHover={{ scale: 1.05 }}
-                    >
-                      <Play className="w-5 h-5" /> Play Now
-                    </motion.div>
-                  </div>
-                </motion.button>
-
-                {/* Memory Pattern Game Card */}
-                <motion.button
-                  whileHover={{ scale: 1.03, y: -10 }}
-                  whileTap={{ scale: 0.97 }}
-                  onClick={() => setSelectedGame('memory')}
-                  className="relative p-6 rounded-3xl overflow-hidden group bg-gradient-to-br from-blue-500/20 via-cyan-500/20 to-green-500/20 backdrop-blur-xl border border-white/20 text-left"
-                >
-                  {/* Animated gradient overlay */}
-                  <motion.div
-                    className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity"
-                    animate={{
-                      background: [
-                        'linear-gradient(45deg, rgba(59,130,246,0.3), rgba(6,182,212,0.3), rgba(16,185,129,0.3))',
-                        'linear-gradient(45deg, rgba(16,185,129,0.3), rgba(59,130,246,0.3), rgba(6,182,212,0.3))',
-                      ]
-                    }}
-                    transition={{ duration: 3, repeat: Infinity }}
-                  />
-                  
-                  {/* Arrow previews */}
-                  <div className="absolute inset-0 overflow-hidden pointer-events-none">
-                    {DIRECTIONS.map((dir, i) => (
-                      <motion.div
-                        key={i}
-                        className={`absolute w-12 h-12 rounded-xl bg-gradient-to-br ${dir.color} flex items-center justify-center`}
-                        animate={{
-                          scale: [0.8, 1.2, 0.8],
-                          opacity: [0.2, 0.5, 0.2],
-                          rotate: [0, 10, -10, 0],
-                        }}
-                        transition={{
-                          duration: 3,
-                          repeat: Infinity,
-                          delay: i * 0.5,
-                        }}
-                        style={{
-                          top: `${20 + i * 15}%`,
-                          right: `${10 + i * 8}%`,
-                        }}
-                      >
-                        <dir.icon className="w-6 h-6 text-white" />
-                      </motion.div>
-                    ))}
-                  </div>
-
-                  <div className="relative z-10">
-                    <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-blue-500 to-cyan-600 flex items-center justify-center mb-5 shadow-xl shadow-blue-500/30">
-                      <Brain className="w-8 h-8 text-white" />
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs text-gray-500">{g.stat}</span>
+                      <div className={`flex items-center gap-1.5 px-4 py-2 rounded-xl bg-gradient-to-r ${g.grad} text-white text-sm font-semibold`}>
+                        <Play className="w-4 h-4" /> Play
+                      </div>
                     </div>
-                    
-                    <h2 className="text-2xl font-bold text-white mb-3">Mind Pattern Match</h2>
-                    <p className="text-gray-300 mb-4">Train your brain with pattern sequences! Watch, memorize, and repeat the arrows to level up.</p>
-                    
-                    <div className="flex items-center gap-4 text-sm text-gray-400">
-                      <span className="flex items-center gap-1"><Brain className="w-4 h-4" /> Memory training</span>
-                      <span className="flex items-center gap-1"><TrendingUp className="w-4 h-4" /> Endless levels</span>
-                      <span className="flex items-center gap-1"><Lightning className="w-4 h-4" /> Use keyboard</span>
-                    </div>
-                    
-                    <motion.div
-                      className="mt-6 inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-gradient-to-r from-blue-500 to-cyan-500 text-white font-bold"
-                      whileHover={{ scale: 1.05 }}
-                    >
-                      <Play className="w-5 h-5" /> Play Now
-                    </motion.div>
-                  </div>
-                </motion.button>
-
-                {/* Zen Garden Game Card */}
-                <motion.button
-                  whileHover={{ scale: 1.03, y: -10 }}
-                  whileTap={{ scale: 0.97 }}
-                  onClick={() => setSelectedGame('zen')}
-                  className="relative p-6 rounded-3xl overflow-hidden group bg-gradient-to-br from-teal-500/20 via-emerald-500/20 to-green-500/20 backdrop-blur-xl border border-white/20 text-left"
-                >
-                  <motion.div
-                    className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity"
-                    animate={{
-                      background: [
-                        'linear-gradient(45deg, rgba(20,184,166,0.3), rgba(16,185,129,0.3), rgba(34,197,94,0.3))',
-                        'linear-gradient(45deg, rgba(34,197,94,0.3), rgba(20,184,166,0.3), rgba(16,185,129,0.3))',
-                      ]
-                    }}
-                    transition={{ duration: 3, repeat: Infinity }}
-                  />
-                  
-                  <div className="absolute inset-0 overflow-hidden pointer-events-none">
-                    {ZEN_COLORS.map((c, i) => (
-                      <motion.div
-                        key={i}
-                        className={`absolute w-10 h-10 rounded-lg bg-gradient-to-br ${c.color}`}
-                        animate={{
-                          rotateY: [0, 180, 0],
-                          opacity: [0.3, 0.6, 0.3],
-                        }}
-                        transition={{
-                          duration: 2,
-                          repeat: Infinity,
-                          delay: i * 0.3,
-                        }}
-                        style={{
-                          top: `${15 + (i % 3) * 25}%`,
-                          right: `${5 + (i % 2) * 15}%`,
-                        }}
-                      />
-                    ))}
-                  </div>
-
-                  <div className="relative z-10">
-                    <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-teal-500 to-emerald-600 flex items-center justify-center mb-5 shadow-xl shadow-teal-500/30">
-                      <Grid3X3 className="w-8 h-8 text-white" />
-                    </div>
-                    
-                    <h2 className="text-2xl font-bold text-white mb-3">Zen Color Match</h2>
-                    <p className="text-gray-300 mb-4">Find matching color pairs in this calming memory game. Clear the board with minimal moves!</p>
-                    
-                    <div className="flex items-center gap-4 text-sm text-gray-400">
-                      <span className="flex items-center gap-1"><Leaf className="w-4 h-4" /> Relaxing</span>
-                      <span className="flex items-center gap-1"><Puzzle className="w-4 h-4" /> 12 tiles</span>
-                      <span className="flex items-center gap-1"><Target className="w-4 h-4" /> Find pairs</span>
-                    </div>
-                    
-                    <motion.div
-                      className="mt-6 inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-gradient-to-r from-teal-500 to-emerald-500 text-white font-bold"
-                      whileHover={{ scale: 1.05 }}
-                    >
-                      <Play className="w-5 h-5" /> Play Now
-                    </motion.div>
-                  </div>
-                </motion.button>
-
-                {/* Reflex Reaction Game Card */}
-                <motion.button
-                  whileHover={{ scale: 1.03, y: -10 }}
-                  whileTap={{ scale: 0.97 }}
-                  onClick={() => setSelectedGame('reflex')}
-                  className="relative p-6 rounded-3xl overflow-hidden group bg-gradient-to-br from-orange-500/20 via-red-500/20 to-yellow-500/20 backdrop-blur-xl border border-white/20 text-left"
-                >
-                  <motion.div
-                    className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity"
-                    animate={{
-                      background: [
-                        'linear-gradient(45deg, rgba(249,115,22,0.3), rgba(239,68,68,0.3), rgba(234,179,8,0.3))',
-                        'linear-gradient(45deg, rgba(234,179,8,0.3), rgba(249,115,22,0.3), rgba(239,68,68,0.3))',
-                      ]
-                    }}
-                    transition={{ duration: 3, repeat: Infinity }}
-                  />
-                  
-                  <div className="absolute inset-0 overflow-hidden pointer-events-none">
-                    {[...Array(6)].map((_, i) => (
-                      <motion.div
-                        key={i}
-                        className="absolute w-12 h-12 rounded-full bg-gradient-to-br from-green-400 to-emerald-500 flex items-center justify-center"
-                        animate={{
-                          scale: [0, 1, 0],
-                          opacity: [0, 0.6, 0],
-                          x: [0, Math.random() * 20 - 10],
-                          y: [0, Math.random() * 20 - 10],
-                        }}
-                        transition={{
-                          duration: 1.5,
-                          repeat: Infinity,
-                          delay: i * 0.4,
-                        }}
-                        style={{
-                          top: `${20 + (i % 3) * 20}%`,
-                          right: `${5 + (i % 2) * 20}%`,
-                        }}
-                      >
-                        <Crosshair className="w-6 h-6 text-white" />
-                      </motion.div>
-                    ))}
-                  </div>
-
-                  <div className="relative z-10">
-                    <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-orange-500 to-red-600 flex items-center justify-center mb-5 shadow-xl shadow-orange-500/30">
-                      <Crosshair className="w-8 h-8 text-white" />
-                    </div>
-                    
-                    <h2 className="text-2xl font-bold text-white mb-3">Reflex Reactor</h2>
-                    <p className="text-gray-300 mb-4">Test your reaction speed! Click green targets quickly, avoid the red ones. How fast can you react?</p>
-                    
-                    <div className="flex items-center gap-4 text-sm text-gray-400">
-                      <span className="flex items-center gap-1"><Zap className="w-4 h-4" /> Speed test</span>
-                      <span className="flex items-center gap-1"><Timer className="w-4 h-4" /> 30 seconds</span>
-                      <span className="flex items-center gap-1"><Target className="w-4 h-4" /> Hit targets</span>
-                    </div>
-                    
-                    <motion.div
-                      className="mt-6 inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-gradient-to-r from-orange-500 to-red-500 text-white font-bold"
-                      whileHover={{ scale: 1.05 }}
-                    >
-                      <Play className="w-5 h-5" /> Play Now
-                    </motion.div>
-                  </div>
-                </motion.button>
+                  </motion.button>
+                ))}
               </motion.div>
             )}
-          </AnimatePresence>
 
-          {/* ==================== BUBBLE POP GAME ==================== */}
-          <AnimatePresence>
-            {selectedGame === 'bubbles' && (
+            {/* ───────────────── STROOP ───────────────── */}
+            {selected === 'stroop' && (
               <motion.div
-                initial={{ opacity: 0, scale: 0.9 }}
-                animate={{ opacity: 1, scale: 1 }}
-                exit={{ opacity: 0, scale: 0.9 }}
+                key="stroop"
+                initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+                className="max-w-lg mx-auto"
               >
-                {/* Game Header */}
                 <div className="flex items-center justify-between mb-6">
-                  <motion.button
-                    whileHover={{ scale: 1.05 }}
-                    whileTap={{ scale: 0.95 }}
-                    onClick={() => {
-                      setSelectedGame(null);
-                      setBubbleGameActive(false);
-                    }}
-                    className="px-6 py-3 bg-white/10 backdrop-blur-xl rounded-xl text-white border border-white/20 flex items-center gap-2"
-                  >
-                    <ArrowLeft className="w-5 h-5" /> Back to Games
-                  </motion.button>
-                  
-                  <div className="flex items-center gap-6">
-                    {/* Mood Meter */}
-                    <div className="flex items-center gap-3 bg-white/10 backdrop-blur-xl rounded-xl px-4 py-2 border border-white/20">
-                      {(() => {
-                        const mood = getMoodEmoji();
-                        const MoodIcon = mood.icon;
-                        return (
-                          <>
-                            <MoodIcon className={`w-6 h-6 ${mood.color}`} />
-                            <div className="w-32 h-3 bg-gray-700 rounded-full overflow-hidden">
-                              <motion.div
-                                className="h-full bg-gradient-to-r from-red-500 via-yellow-500 to-green-500"
-                                initial={{ width: '50%' }}
-                                animate={{ width: `${moodMeter}%` }}
-                              />
-                            </div>
-                            <span className={`text-sm font-bold ${mood.color}`}>{mood.label}</span>
-                          </>
-                        );
-                      })()}
-                    </div>
-                    
-                    {/* Stats */}
-                    <div className="flex items-center gap-2 bg-gradient-to-r from-yellow-500/20 to-orange-500/20 backdrop-blur-xl rounded-xl px-4 py-2 border border-yellow-500/30">
-                      <Trophy className="w-5 h-5 text-yellow-400" />
-                      <span className="text-2xl font-bold text-white">{bubbleScore}</span>
-                    </div>
-                    
-                    <div className="flex items-center gap-2 bg-gradient-to-r from-orange-500/20 to-red-500/20 backdrop-blur-xl rounded-xl px-4 py-2 border border-orange-500/30">
-                      <Flame className="w-5 h-5 text-orange-400" />
-                      <span className="text-lg font-bold text-white">x{Math.floor(bubbleCombo / 5) + 1}</span>
-                    </div>
-                    
-                    <div className="flex items-center gap-2 bg-gradient-to-r from-blue-500/20 to-cyan-500/20 backdrop-blur-xl rounded-xl px-4 py-2 border border-blue-500/30">
-                      <Timer className="w-5 h-5 text-cyan-400" />
-                      <span className="text-2xl font-bold text-white">{bubbleTimeLeft}s</span>
-                    </div>
+                  <div className="flex items-center gap-2 bg-white/10 rounded-xl px-4 py-2 border border-white/20">
+                    <Trophy className="w-5 h-5 text-yellow-400" />
+                    <span className="text-xl font-bold text-white">{sScore}</span>
+                  </div>
+                  <div className="flex items-center gap-2 bg-white/10 rounded-xl px-4 py-2 border border-white/20">
+                    <Star className="w-5 h-5 text-orange-400" />
+                    <span className="text-sm text-white">Streak <span className="font-bold text-lg">{sStreak}</span></span>
+                  </div>
+                  <div className={`flex items-center gap-2 rounded-xl px-4 py-2 border ${sTime <= 10 ? 'bg-red-500/20 border-red-500/40' : 'bg-white/10 border-white/20'}`}>
+                    <Timer className="w-5 h-5 text-cyan-400" />
+                    <span className="text-xl font-bold text-white">{sTime}s</span>
                   </div>
                 </div>
 
-                {/* Game Area */}
-                <div
-                  ref={gameAreaRef}
-                  className="relative w-full h-[600px] rounded-3xl overflow-hidden bg-gradient-to-b from-indigo-900/50 via-purple-900/50 to-pink-900/50 backdrop-blur-xl border border-white/20"
-                >
-                  {/* Bubbles */}
-                  {bubbles.map((bubble) => {
-                    const moodType = BUBBLE_MOODS.find(m => m.mood === bubble.mood);
-                    const Icon = moodType?.icon || Circle;
-                    
-                    return (
-                      <motion.div
-                        key={bubble.id}
-                        initial={{ scale: 0 }}
-                        animate={{ scale: 1 }}
-                        onClick={(e) => bubbleGameActive && popBubble(bubble, e)}
-                        className={`absolute rounded-full bg-gradient-to-br ${bubble.color} flex items-center justify-center cursor-pointer shadow-lg hover:shadow-2xl transition-shadow`}
-                        style={{
-                          left: `${bubble.x}%`,
-                          top: `${bubble.y}%`,
-                          width: bubble.size,
-                          height: bubble.size,
-                          transform: 'translate(-50%, -50%)',
-                        }}
-                        whileHover={{ scale: 1.1 }}
-                        whileTap={{ scale: 0.9 }}
-                      >
-                        <Icon className="w-1/2 h-1/2 text-white" />
-                      </motion.div>
-                    );
-                  })}
-
-                  {/* Pop Effects */}
-                  <AnimatePresence>
-                    {poppedEffects.map((effect) => (
-                      <motion.div
-                        key={effect.id}
-                        initial={{ opacity: 1, scale: 1, y: 0 }}
-                        animate={{ opacity: 0, scale: 1.5, y: -50 }}
-                        exit={{ opacity: 0 }}
-                        className={`absolute pointer-events-none text-2xl font-bold ${effect.points > 0 ? 'text-green-400' : 'text-red-400'}`}
-                        style={{
-                          left: `${effect.x}%`,
-                          top: `${effect.y}%`,
-                          transform: 'translate(-50%, -50%)',
-                        }}
-                      >
-                        {effect.points > 0 ? `+${effect.points}` : effect.points}
-                      </motion.div>
-                    ))}
-                  </AnimatePresence>
-
-                  {/* Start/End Overlay */}
-                  {!bubbleGameActive && (
-                    <motion.div
-                      initial={{ opacity: 0 }}
-                      animate={{ opacity: 1 }}
-                      className="absolute inset-0 bg-black/60 backdrop-blur-sm flex flex-col items-center justify-center"
-                    >
-                      {bubbleTimeLeft === 0 ? (
-                        <>
-                          <motion.div
-                            initial={{ scale: 0 }}
-                            animate={{ scale: 1 }}
-                            className="text-6xl font-bold text-white mb-4"
-                          >
-                            Game Over!
-                          </motion.div>
-                          <div className="text-3xl text-yellow-400 mb-2 flex items-center gap-2">
-                            <Trophy className="w-8 h-8" /> Score: {bubbleScore}
-                          </div>
-                          <div className="text-xl text-gray-300 mb-8">
-                            Final Mood: {getMoodEmoji().label}
-                          </div>
-                        </>
-                      ) : (
-                        <>
-                          <MousePointer2 className="w-20 h-20 text-white/50 mb-4" />
-                          <div className="text-3xl text-white mb-2">Bubble Pop Therapy</div>
-                          <div className="text-gray-400 mb-8">Pop positive bubbles, avoid stress!</div>
-                        </>
-                      )}
+                <div className={`${cardBase} flex flex-col items-center justify-center min-h-[380px] transition-all ${sFb === 'correct' ? 'ring-4 ring-green-500' : sFb === 'wrong' ? 'ring-4 ring-red-500' : ''}`}>
+                  {!sActive && sTime === 30 && (
+                    <div className="text-center">
+                      <Eye className="w-16 h-16 text-pink-400 mx-auto mb-4" />
+                      <p className="text-2xl font-bold text-white mb-2">Stroop Challenge</p>
+                      <p className="text-gray-400 mb-8 text-sm leading-relaxed">
+                        A color word appears in colored ink.<br />
+                        Tap <strong className="text-green-400">MATCH</strong> if the ink matches the word,{' '}
+                        <strong className="text-red-400">NO MATCH</strong> if not.
+                      </p>
                       <motion.button
-                        whileHover={{ scale: 1.1 }}
-                        whileTap={{ scale: 0.9 }}
-                        onClick={startBubbleGame}
-                        className="px-12 py-4 bg-gradient-to-r from-pink-500 to-purple-600 rounded-2xl text-white font-bold text-xl shadow-xl flex items-center gap-3"
+                        whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}
+                        onClick={startStroop}
+                        className="px-10 py-3.5 bg-gradient-to-r from-pink-500 to-rose-600 rounded-2xl text-white font-bold flex items-center gap-2 mx-auto"
                       >
-                        <Play className="w-6 h-6" /> {bubbleTimeLeft === 0 ? 'Play Again' : 'Start Game'}
+                        <Play className="w-5 h-5" /> Start
                       </motion.button>
-                    </motion.div>
+                    </div>
                   )}
 
-                  {/* Legend */}
-                  <div className="absolute bottom-4 left-4 flex gap-2">
-                    {BUBBLE_MOODS.slice(0, 5).map((mood) => {
-                      const Icon = mood.icon;
-                      return (
-                        <div key={mood.mood} className={`flex items-center gap-1 px-2 py-1 rounded-lg bg-gradient-to-r ${mood.color} text-white text-xs`}>
-                          <Icon className="w-3 h-3" /> +{mood.points}
-                        </div>
-                      );
-                    })}
-                    <div className="flex items-center gap-1 px-2 py-1 rounded-lg bg-gradient-to-r from-red-500 to-red-600 text-white text-xs">
-                      <CloudRain className="w-3 h-3" /> -10
-                    </div>
-                  </div>
-                </div>
-              </motion.div>
-            )}
-          </AnimatePresence>
-
-          {/* ==================== MEMORY PATTERN GAME ==================== */}
-          <AnimatePresence>
-            {selectedGame === 'memory' && (
-              <motion.div
-                initial={{ opacity: 0, scale: 0.9 }}
-                animate={{ opacity: 1, scale: 1 }}
-                exit={{ opacity: 0, scale: 0.9 }}
-              >
-                {/* Game Header */}
-                <div className="flex items-center justify-between mb-6">
-                  <motion.button
-                    whileHover={{ scale: 1.05 }}
-                    whileTap={{ scale: 0.95 }}
-                    onClick={() => {
-                      setSelectedGame(null);
-                      setMemoryGameActive(false);
-                    }}
-                    className="px-6 py-3 bg-white/10 backdrop-blur-xl rounded-xl text-white border border-white/20 flex items-center gap-2"
-                  >
-                    <ArrowLeft className="w-5 h-5" /> Back to Games
-                  </motion.button>
-                  
-                  <div className="flex items-center gap-6">
-                    <div className="flex items-center gap-2 bg-gradient-to-r from-purple-500/20 to-pink-500/20 backdrop-blur-xl rounded-xl px-4 py-2 border border-purple-500/30">
-                      <Crown className="w-5 h-5 text-purple-400" />
-                      <span className="text-lg text-white">Level <span className="font-bold text-2xl">{memoryLevel}</span></span>
-                    </div>
-                    
-                    <div className="flex items-center gap-2 bg-gradient-to-r from-yellow-500/20 to-orange-500/20 backdrop-blur-xl rounded-xl px-4 py-2 border border-yellow-500/30">
-                      <Trophy className="w-5 h-5 text-yellow-400" />
-                      <span className="text-2xl font-bold text-white">{memoryScore}</span>
-                    </div>
-                    
-                    <div className="flex items-center gap-2 bg-gradient-to-r from-blue-500/20 to-cyan-500/20 backdrop-blur-xl rounded-xl px-4 py-2 border border-blue-500/30">
-                      <Target className="w-5 h-5 text-cyan-400" />
-                      <span className="text-lg text-white">{playerPattern.length}/{memoryPattern.length}</span>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Game Area */}
-                <div className="relative w-full h-[600px] rounded-3xl overflow-hidden bg-gradient-to-b from-slate-900/80 via-blue-900/50 to-cyan-900/50 backdrop-blur-xl border border-white/20 flex flex-col items-center justify-center">
-                  {/* Message */}
-                  <motion.div
-                    key={memoryMessage}
-                    initial={{ opacity: 0, y: -20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    className="text-2xl font-bold text-white mb-12"
-                  >
-                    {memoryMessage}
-                  </motion.div>
-
-                  {/* Arrow Buttons */}
-                  <div className="relative w-80 h-80">
-                    {DIRECTIONS.map((dir, index) => {
-                      const positions = [
-                        { top: '0', left: '50%', transform: 'translateX(-50%)' }, // up
-                        { bottom: '0', left: '50%', transform: 'translateX(-50%)' }, // down
-                        { left: '0', top: '50%', transform: 'translateY(-50%)' }, // left
-                        { right: '0', top: '50%', transform: 'translateY(-50%)' }, // right
-                      ];
-                      
-                      const isActive = currentShowIndex >= 0 && memoryPattern[currentShowIndex]?.direction === dir.direction;
-                      const isPlayerActive = activeDirection === dir.direction;
-                      
-                      return (
+                  {sActive && (
+                    <>
+                      <AnimatePresence mode="wait">
+                        <motion.p
+                          key={sItem.word + sItem.hex}
+                          initial={{ opacity: 0, scale: 0.7 }}
+                          animate={{ opacity: 1, scale: 1 }}
+                          exit={{ opacity: 0, scale: 0.7 }}
+                          className="text-7xl font-black mb-12 select-none"
+                          style={{ color: sItem.hex }}
+                        >
+                          {sItem.word}
+                        </motion.p>
+                      </AnimatePresence>
+                      <div className="flex gap-4 w-full">
                         <motion.button
-                          key={dir.direction}
-                          onClick={() => handleDirectionClick(dir.direction as 'up' | 'down' | 'left' | 'right')}
-                          disabled={isShowingPattern || !memoryGameActive}
-                          className={`absolute w-24 h-24 rounded-2xl flex items-center justify-center transition-all ${
-                            isActive || isPlayerActive
-                              ? `bg-gradient-to-br ${dir.color} shadow-2xl scale-110`
-                              : 'bg-white/10 border border-white/30 hover:border-white/50'
-                          }`}
-                          style={positions[index] as any}
-                          whileHover={{ scale: memoryGameActive && !isShowingPattern ? 1.1 : 1 }}
-                          whileTap={{ scale: 0.9 }}
-                          animate={{
-                            boxShadow: isActive ? '0 0 40px rgba(255,255,255,0.5)' : '0 0 0px rgba(0,0,0,0)',
-                          }}
+                          whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}
+                          onClick={() => answerStroop(true)}
+                          className="flex-1 py-4 bg-gradient-to-r from-green-500 to-emerald-600 rounded-2xl text-white font-bold text-lg flex items-center justify-center gap-2"
                         >
-                          <dir.icon className={`w-12 h-12 ${isActive || isPlayerActive ? 'text-white' : 'text-gray-400'}`} />
+                          <CheckCircle2 className="w-6 h-6" /> MATCH
                         </motion.button>
-                      );
-                    })}
-
-                    {/* Center */}
-                    <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-20 h-20 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center">
-                      <Brain className="w-10 h-10 text-white" />
-                    </div>
-                  </div>
-
-                  {/* Progress Dots */}
-                  <div className="flex gap-2 mt-12">
-                    {memoryPattern.map((_, index) => (
-                      <motion.div
-                        key={index}
-                        className={`w-4 h-4 rounded-full ${
-                          index < playerPattern.length
-                            ? 'bg-green-500'
-                            : index === playerPattern.length && memoryGameActive
-                            ? 'bg-yellow-500 animate-pulse'
-                            : 'bg-gray-600'
-                        }`}
-                        animate={{
-                          scale: index === currentShowIndex ? 1.5 : 1,
-                        }}
-                      />
-                    ))}
-                  </div>
-
-                  {/* Keyboard hint */}
-                  <div className="mt-8 text-gray-400 text-sm flex items-center gap-2">
-                    <Lightbulb className="w-4 h-4" />
-                    Tip: Use arrow keys on your keyboard!
-                  </div>
-
-                  {/* Start/End Overlay */}
-                  {!memoryGameActive && (
-                    <motion.div
-                      initial={{ opacity: 0 }}
-                      animate={{ opacity: 1 }}
-                      className="absolute inset-0 bg-black/60 backdrop-blur-sm flex flex-col items-center justify-center"
-                    >
-                      {memoryScore > 0 ? (
-                        <>
-                          <motion.div
-                            initial={{ scale: 0 }}
-                            animate={{ scale: 1 }}
-                            className="text-6xl font-bold text-white mb-4"
-                          >
-                            Game Over!
-                          </motion.div>
-                          <div className="text-3xl text-yellow-400 mb-2 flex items-center gap-2">
-                            <Trophy className="w-8 h-8" /> Score: {memoryScore}
-                          </div>
-                          <div className="text-xl text-purple-400 mb-8 flex items-center gap-2">
-                            <Crown className="w-6 h-6" /> Reached Level {memoryLevel}
-                          </div>
-                        </>
-                      ) : (
-                        <>
-                          <Brain className="w-20 h-20 text-white/50 mb-4" />
-                          <div className="text-3xl text-white mb-2">Mind Pattern Match</div>
-                          <div className="text-gray-400 mb-8">Watch and repeat the sequence</div>
-                        </>
-                      )}
-                      <motion.button
-                        whileHover={{ scale: 1.1 }}
-                        whileTap={{ scale: 0.9 }}
-                        onClick={startMemoryGame}
-                        className="px-12 py-4 bg-gradient-to-r from-blue-500 to-cyan-600 rounded-2xl text-white font-bold text-xl shadow-xl flex items-center gap-3"
-                      >
-                        <Play className="w-6 h-6" /> {memoryScore > 0 ? 'Play Again' : 'Start Game'}
-                      </motion.button>
-                    </motion.div>
-                  )}
-                </div>
-              </motion.div>
-            )}
-          </AnimatePresence>
-
-          {/* ==================== ZEN COLOR MATCH GAME ==================== */}
-          <AnimatePresence>
-            {selectedGame === 'zen' && (
-              <motion.div
-                initial={{ opacity: 0, scale: 0.9 }}
-                animate={{ opacity: 1, scale: 1 }}
-                exit={{ opacity: 0, scale: 0.9 }}
-              >
-                {/* Game Header */}
-                <div className="flex items-center justify-between mb-6">
-                  <motion.button
-                    whileHover={{ scale: 1.05 }}
-                    whileTap={{ scale: 0.95 }}
-                    onClick={() => {
-                      setSelectedGame(null);
-                      setZenGameActive(false);
-                    }}
-                    className="px-6 py-3 bg-white/10 backdrop-blur-xl rounded-xl text-white border border-white/20 flex items-center gap-2"
-                  >
-                    <ArrowLeft className="w-5 h-5" /> Back to Games
-                  </motion.button>
-                  
-                  <div className="flex items-center gap-6">
-                    <div className="flex items-center gap-2 bg-gradient-to-r from-teal-500/20 to-emerald-500/20 backdrop-blur-xl rounded-xl px-4 py-2 border border-teal-500/30">
-                      <Shuffle className="w-5 h-5 text-teal-400" />
-                      <span className="text-lg text-white">Moves: <span className="font-bold text-2xl">{zenMoves}</span></span>
-                    </div>
-                    
-                    <div className="flex items-center gap-2 bg-gradient-to-r from-green-500/20 to-emerald-500/20 backdrop-blur-xl rounded-xl px-4 py-2 border border-green-500/30">
-                      <CheckCircle2 className="w-5 h-5 text-green-400" />
-                      <span className="text-lg text-white">Matches: <span className="font-bold text-2xl">{zenMatches}/{ZEN_COLORS.length}</span></span>
-                    </div>
-                    
-                    <div className="flex items-center gap-2 bg-gradient-to-r from-blue-500/20 to-cyan-500/20 backdrop-blur-xl rounded-xl px-4 py-2 border border-blue-500/30">
-                      <Timer className="w-5 h-5 text-cyan-400" />
-                      <span className="text-2xl font-bold text-white">{Math.floor(zenTime / 60)}:{(zenTime % 60).toString().padStart(2, '0')}</span>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Game Area */}
-                <div className="relative w-full min-h-[600px] rounded-3xl overflow-hidden bg-gradient-to-b from-teal-900/50 via-emerald-900/50 to-green-900/50 backdrop-blur-xl border border-white/20 flex items-center justify-center p-12">
-                  {/* Zen decorative elements */}
-                  <div className="absolute inset-0 overflow-hidden pointer-events-none">
-                    {[...Array(20)].map((_, i) => (
-                      <motion.div
-                        key={i}
-                        className="absolute"
-                        animate={{
-                          y: [-20, 20],
-                          rotate: [0, 360],
-                          opacity: [0.1, 0.3, 0.1],
-                        }}
-                        transition={{
-                          duration: 10 + Math.random() * 10,
-                          repeat: Infinity,
-                          delay: i * 0.5,
-                        }}
-                        style={{
-                          left: `${Math.random() * 100}%`,
-                          top: `${Math.random() * 100}%`,
-                        }}
-                      >
-                        <Leaf className="w-8 h-8 text-emerald-500/20" />
-                      </motion.div>
-                    ))}
-                  </div>
-
-                  {/* Tiles Grid */}
-                  <div className="grid grid-cols-4 gap-4 relative z-10">
-                    {zenTiles.map((tile, index) => (
-                      <motion.button
-                        key={tile.id}
-                        onClick={() => handleZenTileClick(index)}
-                        disabled={tile.matched}
-                        className={`w-28 h-28 rounded-2xl transition-all relative ${
-                          tile.matched 
-                            ? 'opacity-30 cursor-default' 
-                            : 'cursor-pointer'
-                        }`}
-                        whileHover={{ scale: tile.matched ? 1 : 1.08 }}
-                        whileTap={{ scale: 0.95 }}
-                        style={{ perspective: 1000 }}
-                      >
-                        <motion.div
-                          className="w-full h-full relative"
-                          animate={{
-                            rotateY: tile.revealed || tile.matched ? 180 : 0,
-                          }}
-                          transition={{ duration: 0.5, ease: "easeInOut" }}
-                          style={{ transformStyle: 'preserve-3d' }}
+                        <motion.button
+                          whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}
+                          onClick={() => answerStroop(false)}
+                          className="flex-1 py-4 bg-gradient-to-r from-red-500 to-rose-600 rounded-2xl text-white font-bold text-lg flex items-center justify-center gap-2"
                         >
-                          {/* Card Back */}
-                          <div
-                            className="absolute inset-0 bg-gradient-to-br from-slate-600 to-slate-800 rounded-2xl flex items-center justify-center border-2 border-white/20 shadow-xl"
-                            style={{
-                              backfaceVisibility: 'hidden',
-                            }}
-                          >
-                            <Sparkles className="w-10 h-10 text-white/40" />
-                          </div>
-                          
-                          {/* Card Front */}
-                          <div
-                            className={`absolute inset-0 bg-gradient-to-br ${tile.color} rounded-2xl flex flex-col items-center justify-center border-2 border-white/40 shadow-xl`}
-                            style={{
-                              backfaceVisibility: 'hidden',
-                              transform: 'rotateY(180deg)',
-                            }}
-                          >
-                            <div className="w-14 h-14 rounded-full bg-white/30 flex items-center justify-center mb-2">
-                              <Circle className="w-8 h-8 text-white" />
-                            </div>
-                            <span className="text-sm text-white font-bold">{tile.name}</span>
-                          </div>
-                        </motion.div>
-                      </motion.button>
-                    ))}
-                  </div>
+                          <XCircle className="w-6 h-6" /> NO MATCH
+                        </motion.button>
+                      </div>
+                    </>
+                  )}
 
-                  {/* Win/Start Overlay */}
-                  {!zenGameActive && (
-                    <motion.div
-                      initial={{ opacity: 0 }}
-                      animate={{ opacity: 1 }}
-                      className="absolute inset-0 bg-black/60 backdrop-blur-sm flex flex-col items-center justify-center z-20"
-                    >
-                      {zenMatches === ZEN_COLORS.length && zenMoves > 0 ? (
-                        <>
-                          <motion.div
-                            initial={{ scale: 0 }}
-                            animate={{ scale: 1 }}
-                            className="text-6xl font-bold text-white mb-4"
-                          >
-                            Zen Master! 🎋
-                          </motion.div>
-                          <div className="text-3xl text-teal-400 mb-2 flex items-center gap-2">
-                            <Trophy className="w-8 h-8" /> Completed in {zenMoves} moves
-                          </div>
-                          <div className="text-xl text-emerald-400 mb-8 flex items-center gap-2">
-                            <Clock className="w-6 h-6" /> Time: {Math.floor(zenTime / 60)}:{(zenTime % 60).toString().padStart(2, '0')}
-                          </div>
-                        </>
-                      ) : (
-                        <>
-                          <Grid3X3 className="w-20 h-20 text-white/50 mb-4" />
-                          <div className="text-3xl text-white mb-2">Zen Color Match</div>
-                          <div className="text-gray-400 mb-8">Find all matching color pairs</div>
-                        </>
-                      )}
-                      <motion.button
-                        whileHover={{ scale: 1.1 }}
-                        whileTap={{ scale: 0.9 }}
-                        onClick={initZenGame}
-                        className="px-12 py-4 bg-gradient-to-r from-teal-500 to-emerald-600 rounded-2xl text-white font-bold text-xl shadow-xl flex items-center gap-3"
-                      >
-                        <Play className="w-6 h-6" /> {zenMoves > 0 ? 'Play Again' : 'Start Game'}
-                      </motion.button>
-                    </motion.div>
+                  {!sActive && sTime === 0 && (
+                    <div className="text-center">
+                      <Trophy className="w-16 h-16 text-yellow-400 mx-auto mb-4" />
+                      <p className="text-3xl font-bold text-white mb-1">Time&apos;s Up!</p>
+                      <p className="text-5xl font-black text-yellow-400 mb-2">{sScore} pts</p>
+                      <p className="text-gray-400 mb-1">Best streak: <span className="text-white font-bold">{sBest}</span></p>
+                      <p className="text-xs text-gray-500 mb-8">All-time best: {stats.bubbleBestScore} pts</p>
+                      <div className="flex gap-3 justify-center">
+                        <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} onClick={goBack} className={backBtn}>
+                          <ArrowLeft className="w-4 h-4" /> Back
+                        </motion.button>
+                        <motion.button
+                          whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}
+                          onClick={startStroop}
+                          className="px-8 py-3 bg-gradient-to-r from-pink-500 to-rose-600 rounded-xl text-white font-bold flex items-center gap-2"
+                        >
+                          <RotateCcw className="w-4 h-4" /> Play Again
+                        </motion.button>
+                      </div>
+                    </div>
                   )}
                 </div>
               </motion.div>
             )}
-          </AnimatePresence>
 
-          {/* ==================== REFLEX REACTOR GAME ==================== */}
-          <AnimatePresence>
-            {selectedGame === 'reflex' && (
+            {/* ───────────────── TILES ───────────────── */}
+            {selected === 'tiles' && (
               <motion.div
-                initial={{ opacity: 0, scale: 0.9 }}
-                animate={{ opacity: 1, scale: 1 }}
-                exit={{ opacity: 0, scale: 0.9 }}
+                key="tiles"
+                initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+                className="max-w-lg mx-auto"
               >
-                {/* Game Header */}
                 <div className="flex items-center justify-between mb-6">
-                  <motion.button
-                    whileHover={{ scale: 1.05 }}
-                    whileTap={{ scale: 0.95 }}
-                    onClick={() => {
-                      setSelectedGame(null);
-                      setReflexGameActive(false);
-                    }}
-                    className="px-6 py-3 bg-white/10 backdrop-blur-xl rounded-xl text-white border border-white/20 flex items-center gap-2"
-                  >
-                    <ArrowLeft className="w-5 h-5" /> Back to Games
-                  </motion.button>
-                  
-                  <div className="flex items-center gap-6">
-                    <div className="flex items-center gap-2 bg-gradient-to-r from-green-500/20 to-emerald-500/20 backdrop-blur-xl rounded-xl px-4 py-2 border border-green-500/30">
-                      <CheckCircle2 className="w-5 h-5 text-green-400" />
-                      <span className="text-lg text-white">Hits: <span className="font-bold text-2xl">{reflexHits}</span></span>
-                    </div>
-                    
-                    <div className="flex items-center gap-2 bg-gradient-to-r from-red-500/20 to-rose-500/20 backdrop-blur-xl rounded-xl px-4 py-2 border border-red-500/30">
-                      <XCircle className="w-5 h-5 text-red-400" />
-                      <span className="text-lg text-white">Misses: <span className="font-bold text-2xl">{reflexMisses}</span></span>
-                    </div>
-                    
-                    <div className="flex items-center gap-2 bg-gradient-to-r from-yellow-500/20 to-orange-500/20 backdrop-blur-xl rounded-xl px-4 py-2 border border-yellow-500/30">
-                      <Trophy className="w-5 h-5 text-yellow-400" />
-                      <span className="text-2xl font-bold text-white">{reflexScore}</span>
-                    </div>
-                    
-                    <div className="flex items-center gap-2 bg-gradient-to-r from-purple-500/20 to-pink-500/20 backdrop-blur-xl rounded-xl px-4 py-2 border border-purple-500/30">
-                      <Zap className="w-5 h-5 text-purple-400" />
-                      <span className="text-lg text-white">Best: <span className="font-bold">{reflexBestReaction ? `${reflexBestReaction}ms` : '-'}</span></span>
-                    </div>
-                    
-                    <div className="flex items-center gap-2 bg-gradient-to-r from-blue-500/20 to-cyan-500/20 backdrop-blur-xl rounded-xl px-4 py-2 border border-blue-500/30">
-                      <Timer className="w-5 h-5 text-cyan-400" />
-                      <span className="text-2xl font-bold text-white">{reflexTimeLeft}s</span>
-                    </div>
+                  <div className="flex items-center gap-2 bg-white/10 rounded-xl px-4 py-2 border border-white/20">
+                    <Brain className="w-5 h-5 text-blue-400" />
+                    <span className="text-sm text-white">Level <span className="font-bold text-xl">{tLevel}</span></span>
+                  </div>
+                  <div className="flex items-center gap-2 bg-white/10 rounded-xl px-4 py-2 border border-white/20">
+                    <Trophy className="w-5 h-5 text-yellow-400" />
+                    <span className="text-xl font-bold text-white">{tScore}</span>
                   </div>
                 </div>
 
-                {/* Game Area */}
-                <div
-                  className="relative w-full h-[600px] rounded-3xl overflow-hidden bg-gradient-to-b from-orange-900/30 via-red-900/30 to-yellow-900/30 backdrop-blur-xl border border-white/20"
-                >
-                  {/* Targets */}
-                  <AnimatePresence>
-                    {reflexTargets.map((target) => (
+                <div className={`${cardBase} transition-all ${tFb === 'correct' ? 'ring-4 ring-green-500' : tFb === 'wrong' ? 'ring-4 ring-red-500' : ''}`}>
+                  {tPhase === 'idle' && !tFb && (
+                    <div className="text-center py-8">
+                      <Grid3X3 className="w-16 h-16 text-blue-400 mx-auto mb-4" />
+                      <p className="text-2xl font-bold text-white mb-2">Memory Tiles</p>
+                      <p className="text-gray-400 text-sm mb-8 leading-relaxed">
+                        Tiles light up one by one.<br />Remember the sequence and tap them back in order!
+                      </p>
                       <motion.button
-                        key={target.id}
-                        initial={{ scale: 0, opacity: 0 }}
-                        animate={{ scale: 1, opacity: 1 }}
-                        exit={{ scale: 0, opacity: 0 }}
-                        onClick={(e) => reflexGameActive && hitReflexTarget(target, e)}
-                        className={`absolute rounded-full bg-gradient-to-br ${target.color} flex items-center justify-center cursor-pointer shadow-lg border-4 border-white/30`}
-                        style={{
-                          left: `${target.x}%`,
-                          top: `${target.y}%`,
-                          width: target.size,
-                          height: target.size,
-                          transform: 'translate(-50%, -50%)',
-                        }}
-                        whileHover={{ scale: 1.1 }}
-                        whileTap={{ scale: 0.9 }}
+                        whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}
+                        onClick={startTiles}
+                        className="px-10 py-3.5 bg-gradient-to-r from-blue-500 to-cyan-600 rounded-2xl text-white font-bold flex items-center gap-2 mx-auto"
                       >
-                        {target.isGood ? (
-                          <CheckCircle2 className="w-1/2 h-1/2 text-white" />
-                        ) : (
-                          <XCircle className="w-1/2 h-1/2 text-white" />
-                        )}
-                        
-                        {/* Shrinking timer ring */}
-                        <motion.div
-                          className="absolute inset-0 rounded-full border-4 border-white/50"
-                          initial={{ scale: 1.3, opacity: 1 }}
-                          animate={{ scale: 1, opacity: 0 }}
-                          transition={{ duration: 2 }}
-                        />
+                        <Play className="w-5 h-5" /> Start
                       </motion.button>
-                    ))}
-                  </AnimatePresence>
-
-                  {/* Instructions */}
-                  {reflexGameActive && (
-                    <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 flex gap-4 text-sm text-white/60">
-                      <div className="flex items-center gap-2 bg-green-500/20 px-4 py-2 rounded-xl">
-                        <CheckCircle2 className="w-5 h-5 text-green-400" />
-                        <span>Click GREEN = +Points</span>
-                      </div>
-                      <div className="flex items-center gap-2 bg-red-500/20 px-4 py-2 rounded-xl">
-                        <XCircle className="w-5 h-5 text-red-400" />
-                        <span>Avoid RED = -200 Points</span>
-                      </div>
                     </div>
                   )}
 
-                  {/* Start/End Overlay */}
-                  {!reflexGameActive && (
-                    <motion.div
-                      initial={{ opacity: 0 }}
-                      animate={{ opacity: 1 }}
-                      className="absolute inset-0 bg-black/60 backdrop-blur-sm flex flex-col items-center justify-center"
-                    >
-                      {reflexScore > 0 || reflexHits > 0 ? (
-                        <>
-                          <motion.div
-                            initial={{ scale: 0 }}
-                            animate={{ scale: 1 }}
-                            className="text-6xl font-bold text-white mb-4"
-                          >
-                            Time&apos;s Up!
-                          </motion.div>
-                          <div className="text-3xl text-yellow-400 mb-2 flex items-center gap-2">
-                            <Trophy className="w-8 h-8" /> Score: {reflexScore}
-                          </div>
-                          <div className="grid grid-cols-3 gap-6 mb-8">
-                            <div className="text-center">
-                              <div className="text-2xl font-bold text-green-400">{reflexHits}</div>
-                              <div className="text-gray-400">Hits</div>
-                            </div>
-                            <div className="text-center">
-                              <div className="text-2xl font-bold text-red-400">{reflexMisses}</div>
-                              <div className="text-gray-400">Misses</div>
-                            </div>
-                            <div className="text-center">
-                              <div className="text-2xl font-bold text-purple-400">{reflexBestReaction}ms</div>
-                              <div className="text-gray-400">Best Reaction</div>
-                            </div>
-                          </div>
-                        </>
-                      ) : (
-                        <>
-                          <Crosshair className="w-20 h-20 text-white/50 mb-4" />
-                          <div className="text-3xl text-white mb-2">Reflex Reactor</div>
-                          <div className="text-gray-400 mb-8">Click green targets, avoid red ones!</div>
-                        </>
-                      )}
-                      <motion.button
-                        whileHover={{ scale: 1.1 }}
-                        whileTap={{ scale: 0.9 }}
-                        onClick={startReflexGame}
-                        className="px-12 py-4 bg-gradient-to-r from-orange-500 to-red-600 rounded-2xl text-white font-bold text-xl shadow-xl flex items-center gap-3"
-                      >
-                        <Play className="w-6 h-6" /> {reflexScore > 0 ? 'Play Again' : 'Start Game'}
-                      </motion.button>
-                    </motion.div>
+                  {tPhase !== 'idle' && (
+                    <>
+                      <p className="text-center text-sm text-gray-400 mb-5 min-h-[20px]">
+                        {tFb === 'correct' && '✅ Correct! Next level coming up…'}
+                        {tFb === 'wrong'   && '❌ Wrong order! Green tiles show the target.'}
+                        {!tFb && tPhase === 'showing' && '👀 Watch the tiles…'}
+                        {!tFb && tPhase === 'input'   && '👆 Now tap them back in the same order!'}
+                      </p>
+                      <div className="grid grid-cols-3 gap-3 mb-6">
+                        {Array.from({ length: TILE_COUNT }, (_, i) => {
+                          const isLit      = tLit === i;
+                          const isSelected = tPlayer.includes(i);
+                          const isTarget   = tFb === 'wrong' && tTarget.includes(i);
+                          return (
+                            <motion.button key={i}
+                              whileTap={{ scale: 0.92 }}
+                              onClick={() => tapTile(i)}
+                              disabled={tPhase !== 'input'}
+                              className={`aspect-square rounded-2xl transition-all duration-200 ${
+                                isLit      ? 'bg-gradient-to-br from-blue-400 to-cyan-400 shadow-lg shadow-blue-500/50 scale-105' :
+                                isSelected ? 'bg-gradient-to-br from-blue-600 to-indigo-700' :
+                                isTarget   ? 'bg-gradient-to-br from-green-500 to-emerald-500' :
+                                'bg-white/10 border border-white/20 hover:bg-white/20'
+                              }`}
+                            />
+                          );
+                        })}
+                      </div>
+                    </>
+                  )}
+
+                  {tPhase === 'done' && (
+                    <div className="text-center mt-2">
+                      <p className="text-2xl font-bold text-white mb-1">Game Over!</p>
+                      <p className="text-5xl font-black text-yellow-400 mb-2">{tScore} pts</p>
+                      <p className="text-gray-400 mb-1">Level reached: <span className="text-white font-bold">{tLevel}</span></p>
+                      <p className="text-xs text-gray-500 mb-6">All-time best: Level {stats.memoryBestLevel}</p>
+                      <div className="flex gap-3 justify-center">
+                        <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} onClick={goBack} className={backBtn}>
+                          <ArrowLeft className="w-4 h-4" /> Back
+                        </motion.button>
+                        <motion.button
+                          whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}
+                          onClick={startTiles}
+                          className="px-8 py-3 bg-gradient-to-r from-blue-500 to-cyan-600 rounded-xl text-white font-bold flex items-center gap-2"
+                        >
+                          <RotateCcw className="w-4 h-4" /> Play Again
+                        </motion.button>
+                      </div>
+                    </div>
                   )}
                 </div>
               </motion.div>
             )}
+
+            {/* ───────────────── REACTION ───────────────── */}
+            {selected === 'reaction' && (
+              <motion.div
+                key="reaction"
+                initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+                className="max-w-lg mx-auto"
+              >
+                <div className="flex items-center justify-between mb-6">
+                  <div className="flex items-center gap-2 bg-white/10 rounded-xl px-4 py-2 border border-white/20">
+                    <Zap className="w-5 h-5 text-yellow-400" />
+                    <span className="text-sm text-white">
+                      Round{' '}
+                      <span className="font-bold text-xl">
+                        {Math.min(rResults.length + (rPhase === 'done' ? 0 : 1), REACTION_ROUNDS)}/{REACTION_ROUNDS}
+                      </span>
+                    </span>
+                  </div>
+                  {rResults.length > 0 && (
+                    <div className="flex items-center gap-2 bg-white/10 rounded-xl px-4 py-2 border border-white/20">
+                      <Timer className="w-5 h-5 text-orange-400" />
+                      <span className="text-sm text-white">Avg <span className="font-bold">{avgArr(rResults)} ms</span></span>
+                    </div>
+                  )}
+                </div>
+
+                <div className={`${cardBase} flex flex-col items-center min-h-[440px] justify-center`}>
+                  {rPhase === 'idle' && (
+                    <div className="text-center">
+                      <Zap className="w-16 h-16 text-yellow-400 mx-auto mb-4" />
+                      <p className="text-2xl font-bold text-white mb-2">Reaction Speed</p>
+                      <p className="text-gray-400 text-sm mb-8 leading-relaxed">
+                        Circle turns <span className="text-red-400 font-bold">RED</span> — wait.<br />
+                        Circle turns <span className="text-green-400 font-bold">GREEN</span> — tap as fast as you can!<br />
+                        {REACTION_ROUNDS} rounds total.
+                      </p>
+                      <motion.button
+                        whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}
+                        onClick={startReaction}
+                        className="px-10 py-3.5 bg-gradient-to-r from-yellow-400 to-orange-500 rounded-2xl text-white font-bold flex items-center gap-2 mx-auto"
+                      >
+                        <Play className="w-5 h-5" /> Start
+                      </motion.button>
+                    </div>
+                  )}
+
+                  {(rPhase === 'waiting' || rPhase === 'go' || rPhase === 'result' || rPhase === 'toosoon') && (
+                    <>
+                      <motion.button
+                        onClick={tapReaction}
+                        animate={rPhase === 'go' ? { scale: [1, 1.06, 1] } : { scale: 1 }}
+                        transition={{ repeat: rPhase === 'go' ? Infinity : 0, duration: 0.6 }}
+                        className={`w-52 h-52 rounded-full font-bold text-2xl text-white shadow-2xl select-none transition-colors duration-200 ${
+                          rPhase === 'go'      ? 'bg-gradient-to-br from-green-400 to-emerald-500 shadow-green-500/50' :
+                          rPhase === 'toosoon' ? 'bg-gradient-to-br from-orange-400 to-red-500' :
+                          rPhase === 'result'  ? 'bg-gradient-to-br from-blue-500 to-indigo-600' :
+                          'bg-gradient-to-br from-red-500 to-rose-600 shadow-red-500/30'
+                        }`}
+                      >
+                        {rPhase === 'waiting' && 'WAIT…'}
+                        {rPhase === 'go'      && 'TAP!'}
+                        {rPhase === 'toosoon' && 'Too soon!'}
+                        {rPhase === 'result'  && rCurrent !== null && `${rCurrent} ms`}
+                      </motion.button>
+                      {rResults.length > 0 && (
+                        <div className="flex gap-2 mt-8 flex-wrap justify-center">
+                          {rResults.map((r, i) => (
+                            <span key={i} className="px-3 py-1 bg-white/10 rounded-full text-sm text-white">{r} ms</span>
+                          ))}
+                        </div>
+                      )}
+                    </>
+                  )}
+
+                  {rPhase === 'done' && (
+                    <div className="text-center">
+                      <Trophy className="w-16 h-16 text-yellow-400 mx-auto mb-4" />
+                      <p className="text-3xl font-bold text-white mb-1">Done!</p>
+                      <p className="text-xl text-gray-300 mb-1">
+                        Avg: <span className="text-white font-bold text-3xl">{avgArr(rResults)} ms</span>
+                      </p>
+                      <p className="text-gray-400 mb-1">
+                        Best this game: <span className="text-white font-bold">{Math.min(...rResults)} ms</span>
+                      </p>
+                      <p className="text-xs text-gray-500 mb-6">All-time best: {stats.reflexBestReaction ?? '–'} ms</p>
+                      <div className="flex flex-wrap gap-2 justify-center mb-6">
+                        {rResults.map((r, i) => (
+                          <span
+                            key={i}
+                            className={`px-3 py-1 rounded-full text-sm font-medium ${r === Math.min(...rResults) ? 'bg-green-500/20 text-green-300' : 'bg-white/10 text-gray-300'}`}
+                          >
+                            R{i + 1}: {r} ms
+                          </span>
+                        ))}
+                      </div>
+                      <div className="flex gap-3 justify-center">
+                        <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} onClick={goBack} className={backBtn}>
+                          <ArrowLeft className="w-4 h-4" /> Back
+                        </motion.button>
+                        <motion.button
+                          whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}
+                          onClick={startReaction}
+                          className="px-8 py-3 bg-gradient-to-r from-yellow-400 to-orange-500 rounded-xl text-white font-bold flex items-center gap-2"
+                        >
+                          <RotateCcw className="w-4 h-4" /> Play Again
+                        </motion.button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </motion.div>
+            )}
+
+            {/* ───────────────── EMOJI ───────────────── */}
+            {selected === 'emoji' && (
+              <motion.div
+                key="emoji"
+                initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+                className="max-w-lg mx-auto"
+              >
+                <div className="flex items-center justify-between mb-6">
+                  <div className="flex items-center gap-2 bg-white/10 rounded-xl px-4 py-2 border border-white/20">
+                    <Trophy className="w-5 h-5 text-yellow-400" />
+                    <span className="text-xl font-bold text-white">{eScore} pts</span>
+                  </div>
+                  <div className={`flex items-center gap-2 rounded-xl px-4 py-2 border ${eTime <= 10 ? 'bg-red-500/20 border-red-500/40' : 'bg-white/10 border-white/20'}`}>
+                    <Timer className="w-5 h-5 text-cyan-400" />
+                    <span className="text-xl font-bold text-white">{eTime}s</span>
+                  </div>
+                </div>
+
+                <div className={`${cardBase} transition-all ${eFb === 'correct' ? 'ring-4 ring-green-500' : eFb === 'wrong' ? 'ring-4 ring-red-500' : ''}`}>
+                  {!eActive && eTime === 45 && (
+                    <div className="text-center py-8">
+                      <Smile className="w-16 h-16 text-purple-400 mx-auto mb-4" />
+                      <p className="text-2xl font-bold text-white mb-2">Emoji Match</p>
+                      <p className="text-gray-400 text-sm mb-8 leading-relaxed">
+                        A target emoji appears at the top.<br />Find and tap it in the grid as fast as you can!
+                      </p>
+                      <motion.button
+                        whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}
+                        onClick={startEmoji}
+                        className="px-10 py-3.5 bg-gradient-to-r from-purple-500 to-indigo-600 rounded-2xl text-white font-bold flex items-center gap-2 mx-auto"
+                      >
+                        <Play className="w-5 h-5" /> Start
+                      </motion.button>
+                    </div>
+                  )}
+
+                  {eActive && (
+                    <>
+                      <p className="text-center text-xs text-gray-500 mb-2 uppercase tracking-widest">Find this emoji</p>
+                      <AnimatePresence mode="wait">
+                        <motion.p
+                          key={eTarget}
+                          initial={{ scale: 0.5, opacity: 0 }}
+                          animate={{ scale: 1, opacity: 1 }}
+                          exit={{ scale: 0.5, opacity: 0 }}
+                          className="text-8xl text-center mb-8 select-none"
+                        >
+                          {eTarget}
+                        </motion.p>
+                      </AnimatePresence>
+                      <div className="grid grid-cols-3 gap-3">
+                        {eOptions.map((e, i) => (
+                          <motion.button
+                            key={`${eTarget}-${i}`}
+                            whileHover={{ scale: 1.08 }}
+                            whileTap={{ scale: 0.92 }}
+                            onClick={() => tapEmoji(e)}
+                            className="text-5xl py-4 rounded-2xl bg-white/10 border border-white/20 hover:bg-white/20 transition-colors"
+                          >
+                            {e}
+                          </motion.button>
+                        ))}
+                      </div>
+                    </>
+                  )}
+
+                  {!eActive && eTime === 0 && (
+                    <div className="text-center py-4">
+                      <Trophy className="w-16 h-16 text-yellow-400 mx-auto mb-4" />
+                      <p className="text-3xl font-bold text-white mb-1">Time&apos;s Up!</p>
+                      <p className="text-5xl font-black text-yellow-400 mb-2">{eScore} pts</p>
+                      <p className="text-xs text-gray-500 mb-8">All-time best: {stats.zenBestTime ?? 0} pts</p>
+                      <div className="flex gap-3 justify-center">
+                        <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} onClick={goBack} className={backBtn}>
+                          <ArrowLeft className="w-4 h-4" /> Back
+                        </motion.button>
+                        <motion.button
+                          whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}
+                          onClick={startEmoji}
+                          className="px-8 py-3 bg-gradient-to-r from-purple-500 to-indigo-600 rounded-xl text-white font-bold flex items-center gap-2"
+                        >
+                          <RotateCcw className="w-4 h-4" /> Play Again
+                        </motion.button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </motion.div>
+            )}
+
           </AnimatePresence>
         </div>
       </div>

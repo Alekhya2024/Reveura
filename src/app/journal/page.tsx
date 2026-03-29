@@ -303,10 +303,10 @@ export default function JournalPage() {
             </div>
 
             <div className="mt-4 sm:mt-5 mb-10 sm:mb-12 pt-2">
-              <h2 className="text-xs font-semibold text-gray-500 mb-4 sm:mb-5 flex items-center gap-2">
+              <p className="text-xs font-semibold tracking-widest text-gray-500 mb-4 sm:mb-5 flex items-center gap-2">
                 <Heart className="w-3.5 h-3.5" />
                 FILTER BY MOOD
-              </h2>
+              </p>
               <div className="flex flex-wrap gap-2.5 sm:gap-3 overflow-x-auto pb-3">
                 <motion.button
                   onClick={() => {
@@ -355,10 +355,10 @@ export default function JournalPage() {
               >
                 <div className="grid grid-cols-1 md:grid-cols-4 gap-7">
                   <div className="md:col-span-2 bg-purple-500/10 backdrop-blur-xl rounded-3xl p-7 border border-purple-200/20">
-                    <h3 className="text-lg font-bold mb-4 flex items-center gap-2 text-white">
+                    <p className="text-sm font-semibold mb-4 flex items-center gap-2 text-white">
                       <Brain className="w-5 h-5 text-purple-400" />
                       Mood Distribution
-                    </h3>
+                    </p>
                     <div className="space-y-3">
                       {MOODS.map((mood) => {
                         const count = entries.filter(e => e.mood === mood.id).length;
@@ -383,7 +383,7 @@ export default function JournalPage() {
                   </div>
 
                   <div className="bg-blue-500/10 backdrop-blur-xl rounded-3xl p-6 border border-blue-200/20">
-                    <h3 className="text-lg font-bold mb-4 text-white">Sentiment</h3>
+                    <p className="text-sm font-semibold mb-4 text-white">Sentiment</p>
                     <div className="flex items-center justify-center h-32">
                       <div className="text-4xl sm:text-5xl font-bold bg-gradient-to-r from-blue-600 to-cyan-500 bg-clip-text text-transparent">
                         {entries.length > 0 ? Math.round((entries.reduce((a, e) => a + e.sentiment, 0) / entries.length) * 100) : 0}
@@ -392,7 +392,7 @@ export default function JournalPage() {
                   </div>
 
                   <div className="bg-orange-500/10 backdrop-blur-xl rounded-3xl p-6 border border-orange-200/20">
-                    <h3 className="text-lg font-bold mb-4 text-white">Energy</h3>
+                    <p className="text-sm font-semibold mb-4 text-white">Energy</p>
                     <div className="flex items-center justify-center h-32">
                       <div className="text-4xl sm:text-5xl font-bold bg-gradient-to-r from-orange-600 to-yellow-500 bg-clip-text text-transparent">
                         {entries.length > 0 ? Math.round(entries.reduce((a, e) => a + e.energy, 0) / entries.length) : 0}
@@ -424,7 +424,7 @@ export default function JournalPage() {
                     <div className="flex items-center justify-between text-white">
                       <div className="flex items-center gap-3">
                         <BookOpen className="w-8 h-8" />
-                        <h2 className="text-2xl font-bold">{editingEntry ? 'Edit Entry' : 'New Entry'}</h2>
+                        <p className="text-lg font-bold">{editingEntry ? 'Edit Entry' : 'New Entry'}</p>
                       </div>
                       <button onClick={() => {
                         playClickSound();
@@ -594,8 +594,8 @@ export default function JournalPage() {
                             <div className="flex items-center gap-3">
                               <MoodIcon className="w-8 h-8" />
                               <div>
-                                <h2 className="text-2xl font-bold">{viewingEntry.title}</h2>
-                                <p className="text-sm">{new Date(viewingEntry.date).toLocaleDateString()}</p>
+                                <p className="text-lg font-bold">{viewingEntry.title}</p>
+                                <p className="text-xs opacity-80">{new Date(viewingEntry.date).toLocaleDateString()}</p>
                               </div>
                             </div>
                             <div className="flex gap-2">
@@ -687,9 +687,9 @@ export default function JournalPage() {
                             </div>
                           </div>
 
-                          <h3 className="text-lg font-bold mb-2 line-clamp-2 bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent">
+                          <p className="text-sm font-semibold mb-2 line-clamp-2 bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent">
                             {entry.title}
-                          </h3>
+                          </p>
 
                           <p className="text-gray-300 mb-4 line-clamp-3 text-sm">{entry.content}</p>
 
@@ -738,7 +738,7 @@ export default function JournalPage() {
                             <Heart className={`w-5 h-5 ${entry.isFavorite ? 'fill-red-500 text-red-500' : 'text-gray-400'}`} />
                           </button>
                         </div>
-                        <h3 className="text-xl font-bold bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent mb-2">{entry.title}</h3>
+                        <p className="text-base font-semibold bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent mb-2">{entry.title}</p>
                         <p className="text-gray-300">{entry.content}</p>
                       </div>
                     </motion.div>
@@ -755,9 +755,9 @@ export default function JournalPage() {
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
                     </svg>
                   </button>
-                  <h3 className="text-2xl font-bold bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent">
+                  <p className="text-lg font-bold bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent">
                     {selectedDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
-                  </h3>
+                  </p>
                   <button onClick={() => { playClickSound(); changeMonth(1); }} className="p-2 rounded-lg bg-gray-800 cursor-pointer">
                     <svg className="w-6 h-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
@@ -812,7 +812,7 @@ export default function JournalPage() {
           {filteredEntries.length === 0 && (
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="text-center mt-8 sm:mt-10 py-20">
               <BookOpen className="w-24 h-24 text-purple-400 mx-auto mb-6" />
-              <h3 className="text-2xl font-bold text-white mb-2">No entries yet</h3>
+              <p className="text-xl font-semibold text-white mb-2">No entries yet</p>
               <p className="text-gray-400 mb-6">Start journaling today</p>
               <button onClick={() => {
                 playClickSound();
