@@ -11,6 +11,7 @@ import DashboardLayout from '@/components/DashboardLayout';
 import {
   getStoredMoodGameStats,
   saveStoredMoodGameStats,
+  defaultMoodGameStats,
   type MoodGameStats,
 } from '@/lib/userData';
 
@@ -58,9 +59,14 @@ function avgArr(arr: number[]) {
 // ─── Component ───────────────────────────────────────────────────────────────
 export default function MoodGamesPage() {
   const [selected, setSelected] = useState<GameType>(null);
+  const [mounted, setMounted] = useState(false);
 
-  // Stats — saved via effect, never inside a setState updater
-  const [stats, setStats] = useState<MoodGameStats>(getStoredMoodGameStats);
+  // Stats — initialize with defaults (no localStorage on server), load after mount
+  const [stats, setStats] = useState<MoodGameStats>(defaultMoodGameStats);
+  useEffect(() => {
+    setStats(getStoredMoodGameStats());
+    setMounted(true);
+  }, []);
   const statsMounted = useRef(false);
   useEffect(() => {
     if (!statsMounted.current) { statsMounted.current = true; return; }
@@ -438,7 +444,7 @@ export default function MoodGamesPage() {
                       ))}
                     </div>
                     <div className="flex items-center justify-between">
-                      <span className="text-xs text-gray-500">{g.stat}</span>
+                      <span className="text-xs text-gray-500">{mounted ? g.stat : ''}</span>
                       <div className={`flex items-center gap-1.5 px-4 py-2 rounded-xl bg-gradient-to-r ${g.grad} text-white text-sm font-semibold`}>
                         <Play className="w-4 h-4" /> Play
                       </div>
