@@ -76,6 +76,7 @@ const translations: Record<Language, Record<string, string>> = {
     'nav.achievements': 'Achievements',
     'nav.insights': 'Insights',
     'nav.settings': 'Settings',
+    'nav.documentation': 'Documentation',
     'nav.logout': 'Logout',
     
     // Dashboard
@@ -266,6 +267,7 @@ const translations: Record<Language, Record<string, string>> = {
     'nav.achievements': 'Logros',
     'nav.insights': 'Perspectivas',
     'nav.settings': 'Configuración',
+    'nav.documentation': 'Documentación',
     'nav.logout': 'Cerrar Sesión',
     
     // Dashboard
@@ -440,6 +442,7 @@ const translations: Record<Language, Record<string, string>> = {
     'nav.achievements': '成就',
     'nav.insights': '见解',
     'nav.settings': '设置',
+    'nav.documentation': '文档',
     'nav.logout': '登出',
     
     // Dashboard
@@ -614,6 +617,7 @@ const translations: Record<Language, Record<string, string>> = {
     'nav.achievements': 'उपलब्धियां',
     'nav.insights': 'अंतर्दृष्टि',
     'nav.settings': 'सेटिंग्स',
+    'nav.documentation': 'प्रलेखन',
     'nav.logout': 'लॉग आउट',
     
     // Dashboard

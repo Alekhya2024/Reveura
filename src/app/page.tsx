@@ -12,6 +12,8 @@ export default function AuthPage() {
   const [isSignIn, setIsSignIn] = useState(true);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
   const [formData, setFormData] = useState({
     email: '',
     password: '',
@@ -25,37 +27,132 @@ export default function AuthPage() {
       ...prev,
       [name]: type === 'checkbox' ? checked : value,
     }));
+    // Clear errors when user starts typing
+    setError('');
+    setSuccess('');
+  };
+
+  const validateEmail = (email: string): boolean => {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    return emailRegex.test(email);
+  };
+
+  const handleSignUp = () => {
+    // Validation
+    if (!formData.email || !formData.password || !formData.confirmPassword) {
+      setError('All fields are required');
+      return;
+    }
+
+    if (!validateEmail(formData.email)) {
+      setError('Please enter a valid email address');
+      return;
+    }
+
+    if (formData.password.length < 6) {
+      setError('Password must be at least 6 characters long');
+      return;
+    }
+
+    if (formData.password !== formData.confirmPassword) {
+      setError('Passwords do not match');
+      return;
+    }
+
+    // Check if user already exists
+    const existingUsers = localStorage.getItem('reveura_users');
+    const users = existingUsers ? JSON.parse(existingUsers) : [];
+    
+    const userExists = users.find((user: any) => user.email === formData.email);
+    if (userExists) {
+      setError('User already exists. Please sign in instead.');
+      return;
+    }
+
+    // Create new user
+    const newUser = {
+      email: formData.email,
+      password: formData.password,
+      createdAt: new Date().toISOString(),
+    };
+
+    users.push(newUser);
+    localStorage.setItem('reveura_users', JSON.stringify(users));
+
+    // Create user profile
+    const userProfile = {
+      name: formData.email.split('@')[0],
+      email: formData.email,
+      loginTime: new Date().toISOString(),
+      isNewUser: true,
+    };
+    localStorage.setItem('reveura_user_profile', JSON.stringify(userProfile));
+
+    setSuccess('Account created successfully! Redirecting...');
+    console.log('✅ User registered:', formData.email);
+
+    // Redirect to dashboard
+    setTimeout(() => {
+      router.push('/dashboard');
+    }, 1500);
+  };
+
+  const handleSignIn = () => {
+    // Validation
+    if (!formData.email || !formData.password) {
+      setError('Email and password are required');
+      return;
+    }
+
+    if (!validateEmail(formData.email)) {
+      setError('Please enter a valid email address');
+      return;
+    }
+
+    // Check credentials
+    const existingUsers = localStorage.getItem('reveura_users');
+    const users = existingUsers ? JSON.parse(existingUsers) : [];
+    
+    const user = users.find((u: any) => u.email === formData.email);
+    
+    if (!user) {
+      setError('Invalid email or password');
+      return;
+    }
+
+    if (user.password !== formData.password) {
+      setError('Invalid email or password');
+      return;
+    }
+
+    // Update user profile
+    const userProfile = {
+      name: formData.email.split('@')[0],
+      email: formData.email,
+      loginTime: new Date().toISOString(),
+      isNewUser: false,
+    };
+    localStorage.setItem('reveura_user_profile', JSON.stringify(userProfile));
+
+    setSuccess('Login successful! Redirecting...');
+    console.log('✅ User logged in:', formData.email);
+
+    // Redirect to dashboard
+    setTimeout(() => {
+      router.push('/dashboard');
+    }, 1500);
   };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    console.log(isSignIn ? 'Sign In submitted:' : 'Sign Up submitted:', formData);
+    setError('');
+    setSuccess('');
     
-    // Create user profile in localStorage to trigger tour auto-start
-    const userProfile = {
-      name: formData.email.split('@')[0], // Use email prefix as name
-      email: formData.email,
-      loginTime: new Date().toISOString(),
-      isNewUser: !isSignIn, // true for sign up, false for sign in
-    };
-    
-    // Only set user profile if it doesn't exist (new login)
-    const existingProfile = localStorage.getItem('reveura_user_profile');
-    if (!existingProfile) {
-      localStorage.setItem('reveura_user_profile', JSON.stringify(userProfile));
-      console.log('✅ User profile created:', userProfile);
+    if (isSignIn) {
+      handleSignIn();
     } else {
-      // Update login time for existing users
-      const existing = JSON.parse(existingProfile);
-      localStorage.setItem('reveura_user_profile', JSON.stringify({
-        ...existing,
-        loginTime: new Date().toISOString(),
-      }));
-      console.log('✅ User login time updated');
+      handleSignUp();
     }
-    
-    // Redirect to dashboard after successful login/signup
-    router.push('/dashboard');
   };
 
   return (
@@ -231,7 +328,7 @@ export default function AuthPage() {
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: 0.7 }}
-                  className="text-3xl font-bold mb-3 text-center bg-gradient-to-r from-white to-neutral-300 bg-clip-text text-transparent"
+                  className="text-xl sm:text-2xl font-bold mb-3 text-center bg-gradient-to-r from-white to-neutral-300 bg-clip-text text-transparent"
                   style={{ fontFamily: "var(--font-heading)" }}
                 >
                   Welcome to Reveura
@@ -241,7 +338,7 @@ export default function AuthPage() {
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
                   transition={{ delay: 0.9 }}
-                  className="text-neutral-200 text-center text-base mb-6 max-w-md"
+                  className="text-neutral-200 text-center text-sm mb-6 max-w-md"
                   style={{ fontFamily: "var(--font-body)" }}
                 >
                   Track your mood, habits, sleep & reflections. Understand your emotional patterns and build balanced well-being through awareness.
@@ -286,11 +383,11 @@ export default function AuthPage() {
                 transition={{ delay: 0.4 }}
                 className="text-center mb-4 sm:mb-6"
               >
-                <h1 className="text-xl sm:text-2xl font-bold bg-gradient-to-r from-red-500 via-red-400 to-neutral-300 bg-clip-text text-transparent"
-                    style={{ fontFamily: "'Playfair Display', serif" }}>
+                <h1 className="text-lg sm:text-xl font-bold bg-gradient-to-r from-red-500 via-red-400 to-neutral-300 bg-clip-text text-transparent"
+                    style={{ fontFamily: "var(--font-display)" }}>
                   REVEURA
                 </h1>
-                <p className="text-neutral-400 text-xs mt-1" style={{ fontFamily: "'Inter', sans-serif" }}>
+                <p className="text-neutral-400 text-xs mt-1" style={{ fontFamily: "var(--font-body)" }}>
                   Mental Wellness Habit Tracker
                 </p>
               </motion.div>
@@ -300,13 +397,18 @@ export default function AuthPage() {
                 <motion.button
                   whileHover={{ scale: 1.02 }}
                   whileTap={{ scale: 0.98 }}
-                  onClick={() => setIsSignIn(true)}
+                  onClick={() => {
+                    setIsSignIn(true);
+                    setFormData({ email: '', password: '', confirmPassword: '', rememberMe: false });
+                    setError('');
+                    setSuccess('');
+                  }}
                   className={`flex-1 px-4 py-2.5 rounded-xl font-semibold text-sm transition-all duration-300 flex items-center justify-center gap-2 cursor-pointer ${
                     isSignIn
                       ? 'bg-gradient-to-r from-red-600 to-red-700 text-white shadow-lg shadow-red-900/50'
                       : 'text-white hover:text-white'
                   }`}
-                  style={{ fontFamily: "'Inter', sans-serif" }}
+                  style={{ fontFamily: "var(--font-accent)" }}
                 >
                   <LogIn size={16} />
                   Sign In
@@ -314,13 +416,18 @@ export default function AuthPage() {
                 <motion.button
                   whileHover={{ scale: 1.02 }}
                   whileTap={{ scale: 0.98 }}
-                  onClick={() => setIsSignIn(false)}
+                  onClick={() => {
+                    setIsSignIn(false);
+                    setFormData({ email: '', password: '', confirmPassword: '', rememberMe: false });
+                    setError('');
+                    setSuccess('');
+                  }}
                   className={`flex-1 px-4 py-2.5 rounded-xl font-semibold text-sm transition-all duration-300 flex items-center justify-center gap-2 cursor-pointer ${
                     !isSignIn
                       ? 'bg-gradient-to-r from-red-600 to-red-700 text-white shadow-lg shadow-red-900/50'
                       : 'text-white hover:text-white'
                   }`}
-                  style={{ fontFamily: "'Inter', sans-serif" }}
+                  style={{ fontFamily: "var(--font-accent)" }}
                 >
                   <UserPlus size={16} />
                   Sign Up
@@ -336,13 +443,18 @@ export default function AuthPage() {
                     exit={{ opacity: 0, x: 20 }}
                     transition={{ duration: 0.3 }}
                   >
-                    <h2 className="text-xl font-bold text-white mb-1" style={{ fontFamily: "'Poppins', sans-serif" }}>
+                    <h2 className="text-lg font-bold text-white mb-1" style={{ fontFamily: "var(--font-heading)" }}>
                       Welcome Back
                     </h2>
                     <p className="text-neutral-400 text-xs mb-5">
                       Don't have an account?{' '}
                       <button
-                        onClick={() => setIsSignIn(false)}
+                        onClick={() => {
+                          setIsSignIn(false);
+                          setFormData({ email: '', password: '', confirmPassword: '', rememberMe: false });
+                          setError('');
+                          setSuccess('');
+                        }}
                         className="text-red-500 hover:text-red-400 font-semibold transition cursor-pointer"
                       >
                         Create now
@@ -364,7 +476,7 @@ export default function AuthPage() {
                             onChange={handleInputChange}
                             placeholder="your.email@example.com"
                             className="w-full px-4 py-2.5 bg-black/50 border border-neutral-800 rounded-xl text-white text-sm placeholder-neutral-500 focus:outline-none focus:border-red-500 focus:ring-2 focus:ring-red-500/20 transition-all duration-300"
-                            style={{ fontFamily: "'Inter', sans-serif" }}
+                            style={{ fontFamily: "var(--font-body)" }}
                           />
                         </motion.div>
                       </div>
@@ -383,7 +495,7 @@ export default function AuthPage() {
                             onChange={handleInputChange}
                             placeholder="Enter your password"
                             className="w-full px-4 py-2.5 bg-black/50 border border-neutral-800 rounded-xl text-white text-sm placeholder-neutral-500 focus:outline-none focus:border-red-500 focus:ring-2 focus:ring-red-500/20 transition-all duration-300"
-                            style={{ fontFamily: "'Inter', sans-serif" }}
+                            style={{ fontFamily: "var(--font-body)" }}
                           />
                           <button
                             type="button"
@@ -412,13 +524,43 @@ export default function AuthPage() {
                         </button>
                       </div>
 
+                      {/* Error/Success Messages */}
+                      <AnimatePresence>
+                        {error && (
+                          <motion.div
+                            initial={{ opacity: 0, y: -10 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            exit={{ opacity: 0, y: -10 }}
+                            className="bg-red-500/10 border border-red-500/50 text-red-500 px-4 py-2.5 rounded-xl text-sm flex items-center gap-2"
+                          >
+                            <svg className="w-4 h-4 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                              <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd"/>
+                            </svg>
+                            <span>{error}</span>
+                          </motion.div>
+                        )}
+                        {success && (
+                          <motion.div
+                            initial={{ opacity: 0, y: -10 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            exit={{ opacity: 0, y: -10 }}
+                            className="bg-green-500/10 border border-green-500/50 text-green-500 px-4 py-2.5 rounded-xl text-sm flex items-center gap-2"
+                          >
+                            <svg className="w-4 h-4 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                              <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd"/>
+                            </svg>
+                            <span>{success}</span>
+                          </motion.div>
+                        )}
+                      </AnimatePresence>
+
                       {/* Sign In Button */}
                       <motion.button
                         whileHover={{ scale: 1.02, boxShadow: "0 0 30px rgba(239, 68, 68, 0.4)" }}
                         whileTap={{ scale: 0.98 }}
                         type="submit"
                         className="w-full bg-gradient-to-r from-red-600 via-red-500 to-red-700 hover:from-red-700 hover:via-red-600 hover:to-red-800 text-white font-bold py-3 rounded-xl transition-all duration-300 shadow-lg shadow-red-900/50 mt-2"
-                        style={{ fontFamily: "'Poppins', sans-serif" }}
+                        style={{ fontFamily: "var(--font-accent)" }}
                       >
                         Sign In Now
                       </motion.button>
@@ -432,14 +574,19 @@ export default function AuthPage() {
                     exit={{ opacity: 0, x: -20 }}
                     transition={{ duration: 0.3 }}
                   >
-                    <h2 className="text-xl font-bold text-white mb-1" style={{ fontFamily: "'Poppins', sans-serif" }}>
+                    <h2 className="text-lg font-bold text-white mb-1" style={{ fontFamily: "var(--font-heading)" }}>
                       Create Account
                     </h2>
                     <p className="text-neutral-400 text-xs mb-5">
                       Already have an account?{' '}
                       <button
-                        onClick={() => setIsSignIn(true)}
-                        className="text-red-500 hover:text-red-400 font-semibold transition"
+                        onClick={() => {
+                          setIsSignIn(true);
+                          setFormData({ email: '', password: '', confirmPassword: '', rememberMe: false });
+                          setError('');
+                          setSuccess('');
+                        }}
+                        className="text-red-500 hover:text-red-400 font-semibold transition cursor-pointer"
                       >
                         Sign in
                       </button>
@@ -460,7 +607,7 @@ export default function AuthPage() {
                             onChange={handleInputChange}
                             placeholder="your.email@example.com"
                             className="w-full px-4 py-2.5 bg-black/50 border border-neutral-800 rounded-xl text-white text-sm placeholder-neutral-500 focus:outline-none focus:border-red-500 focus:ring-2 focus:ring-red-500/20 transition-all duration-300"
-                            style={{ fontFamily: "'Inter', sans-serif" }}
+                            style={{ fontFamily: "var(--font-body)" }}
                           />
                         </motion.div>
                       </div>
@@ -479,7 +626,7 @@ export default function AuthPage() {
                             onChange={handleInputChange}
                             placeholder="Create a strong password"
                             className="w-full px-4 py-2.5 bg-black/50 border border-neutral-800 rounded-xl text-white text-sm placeholder-neutral-500 focus:outline-none focus:border-red-500 focus:ring-2 focus:ring-red-500/20 transition-all duration-300"
-                            style={{ fontFamily: "'Inter', sans-serif" }}
+                            style={{ fontFamily: "var(--font-body)" }}
                           />
                           <button
                             type="button"
@@ -505,7 +652,7 @@ export default function AuthPage() {
                             onChange={handleInputChange}
                             placeholder="Confirm your password"
                             className="w-full px-4 py-2.5 bg-black/50 border border-neutral-800 rounded-xl text-white text-sm placeholder-neutral-500 focus:outline-none focus:border-red-500 focus:ring-2 focus:ring-red-500/20 transition-all duration-300"
-                            style={{ fontFamily: "'Inter', sans-serif" }}
+                            style={{ fontFamily: "var(--font-body)" }}
                           />
                           <button
                             type="button"
@@ -517,13 +664,43 @@ export default function AuthPage() {
                         </motion.div>
                       </div>
 
+                      {/* Error/Success Messages */}
+                      <AnimatePresence>
+                        {error && (
+                          <motion.div
+                            initial={{ opacity: 0, y: -10 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            exit={{ opacity: 0, y: -10 }}
+                            className="bg-red-500/10 border border-red-500/50 text-red-500 px-4 py-2.5 rounded-xl text-sm flex items-center gap-2"
+                          >
+                            <svg className="w-4 h-4 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                              <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd"/>
+                            </svg>
+                            <span>{error}</span>
+                          </motion.div>
+                        )}
+                        {success && (
+                          <motion.div
+                            initial={{ opacity: 0, y: -10 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            exit={{ opacity: 0, y: -10 }}
+                            className="bg-green-500/10 border border-green-500/50 text-green-500 px-4 py-2.5 rounded-xl text-sm flex items-center gap-2"
+                          >
+                            <svg className="w-4 h-4 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                              <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd"/>
+                            </svg>
+                            <span>{success}</span>
+                          </motion.div>
+                        )}
+                      </AnimatePresence>
+
                       {/* Sign Up Button */}
                       <motion.button
                         whileHover={{ scale: 1.02, boxShadow: "0 0 30px rgba(239, 68, 68, 0.4)" }}
                         whileTap={{ scale: 0.98 }}
                         type="submit"
                         className="w-full bg-gradient-to-r from-red-600 via-red-500 to-red-700 hover:from-red-700 hover:via-red-600 hover:to-red-800 text-white font-bold py-3 rounded-xl transition-all duration-300 shadow-lg shadow-red-900/50 mt-2 cursor-pointer"
-                        style={{ fontFamily: "'Poppins', sans-serif" }}
+                        style={{ fontFamily: "var(--font-accent)" }}
                       >
                         Create Account
                       </motion.button>

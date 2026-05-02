@@ -29,9 +29,13 @@ export function SoundProvider({ children }: { children: ReactNode }) {
       'navigation': new Audio('/sounds/soft-click.mp3'),
     };
 
-    // Set volume for each sound
+    // Set volume for each sound - make click sounds very quiet, keep water drop moderate
+    sounds['click'].volume = 0.1; // Very quiet click
+    sounds['water-drop'].volume = 0.25; // Moderate water drop
+    sounds['soft-click'].volume = 0.15; // Quiet soft click
+    sounds['navigation'].volume = 0.15; // Quiet navigation
+    
     Object.values(sounds).forEach(audio => {
-      audio.volume = 0.3;
       audio.preload = 'auto';
     });
 

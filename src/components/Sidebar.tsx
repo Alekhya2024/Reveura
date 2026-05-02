@@ -18,7 +18,8 @@ import {
   Image as ImageIcon,
   Trophy,
   Menu,
-  X
+  X,
+  FileText
 } from 'lucide-react';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useLanguage } from '@/contexts/LanguageContext';
@@ -36,6 +37,7 @@ const menuItems = [
   { icon: Trophy, labelKey: 'nav.achievements', href: '/achievements' },
   { icon: TrendingUp, labelKey: 'nav.insights', href: '/insights' },
   { icon: Settings, labelKey: 'nav.settings', href: '/settings' },
+  { icon: FileText, labelKey: 'nav.documentation', href: '/documentation' },
 ];
 
 export default function Sidebar() {

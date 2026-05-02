@@ -1,26 +1,19 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence, useMotionValue, useTransform } from 'framer-motion';
 import DashboardLayout from '@/components/DashboardLayout';
 import {
-  Trophy, Award, Star, Target, Crown,
-  Flame, Gem, Shield, Heart, Brain, Moon, Sun,
-  Sparkles, Lock,
-  BookOpen, Rocket, Diamond, BadgeCheck,
-  Hexagon,
-  X, type LucideIcon
+  Trophy, Award, Star, Zap, Target, Crown, Medal, Gift,
+  Flame, Gem, Shield, Sword, Heart, Brain, Moon, Sun,
+  Sparkles, Lock, Unlock, ChevronRight, TrendingUp,
+  Calendar, BookOpen, Dumbbell, Coffee, Music, Palette,
+  Mountain, Rocket, Diamond, BadgeCheck, CircleDot,
+  Hexagon, Pentagon, Octagon, Triangle, Square, Circle,
+  X, Eye, Lightbulb, Wind, Leaf, Waves
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import toast, { Toaster } from 'react-hot-toast';
-import { useSoundEffects } from '@/hooks/useSoundEffects';
-import {
-  calculateHabitStreak,
-  getClaimedAchievementIds,
-  getReveuraDataSnapshot,
-  saveClaimedAchievementIds,
-  type ReveuraDataSnapshot,
-} from '@/lib/userData';
 
 // Achievement Tiers
 type AchievementTier = 'bronze' | 'silver' | 'gold' | 'platinum' | 'diamond';
@@ -29,7 +22,7 @@ interface Achievement {
   id: string;
   title: string;
   description: string;
-  icon: LucideIcon;
+  icon: any;
   unlocked: boolean;
   claimed: boolean;
   progress: number;
@@ -43,22 +36,10 @@ interface Achievement {
 interface Badge {
   id: string;
   name: string;
-  icon: LucideIcon;
+  icon: any;
   color: string;
   unlocked: boolean;
   description: string;
-}
-
-interface AchievementDefinition {
-  id: string;
-  title: string;
-  description: string;
-  icon: LucideIcon;
-  reward: number;
-  tier: AchievementTier;
-  category: string;
-  rarity: number;
-  total: number;
 }
 
 const TIER_COLORS: Record<AchievementTier, { primary: string; secondary: string; glow: string; border: string }> = {
@@ -71,228 +52,197 @@ const TIER_COLORS: Record<AchievementTier, { primary: string; secondary: string;
 
 const CATEGORIES = ['All', 'Wellness', 'Mindfulness', 'Habits', 'Sleep', 'Social', 'Mastery'];
 
-const ACHIEVEMENT_DEFINITIONS: AchievementDefinition[] = [
-  {
-    id: 'first-steps',
-    title: 'First Steps',
-    description: 'Log your first wellness activity in Reveura.',
-    icon: Rocket,
-    reward: 50,
-    tier: 'bronze',
-    category: 'Wellness',
-    rarity: 1,
-    total: 1,
-  },
-  {
-    id: 'week-warrior',
-    title: 'Week Warrior',
-    description: 'Track your mood for 7 days.',
-    icon: Flame,
-    reward: 100,
-    tier: 'silver',
-    category: 'Wellness',
-    rarity: 2,
-    total: 7,
-  },
-  {
-    id: 'zen-master',
-    title: 'Zen Master',
-    description: 'Complete 25 mood game sessions.',
-    icon: Brain,
-    reward: 200,
-    tier: 'gold',
-    category: 'Mindfulness',
-    rarity: 3,
-    total: 25,
-  },
-  {
-    id: 'habit-architect',
-    title: 'Habit Architect',
-    description: 'Create 5 active habits.',
-    icon: Target,
-    reward: 300,
-    tier: 'gold',
-    category: 'Habits',
-    rarity: 3,
-    total: 5,
-  },
-  {
-    id: 'dream-catcher',
-    title: 'Dream Catcher',
-    description: 'Log 50 quality sleep nights of 7+ hours.',
-    icon: Moon,
-    reward: 400,
-    tier: 'platinum',
-    category: 'Sleep',
-    rarity: 4,
-    total: 50,
-  },
-  {
-    id: 'journal-sage',
-    title: 'Journal Sage',
-    description: 'Write 100 journal entries.',
-    icon: BookOpen,
-    reward: 500,
-    tier: 'platinum',
-    category: 'Mindfulness',
-    rarity: 4,
-    total: 100,
-  },
-  {
-    id: 'wellness-legend',
-    title: 'Wellness Legend',
-    description: 'Reach a 100-day best habit streak.',
-    icon: Crown,
-    reward: 1000,
-    tier: 'diamond',
-    category: 'Mastery',
-    rarity: 5,
-    total: 100,
-  },
-  {
-    id: 'mind-olympian',
-    title: 'Mind Olympian',
-    description: 'Unlock 8 achievements across Reveura.',
-    icon: Trophy,
-    reward: 750,
-    tier: 'diamond',
-    category: 'Mastery',
-    rarity: 5,
-    total: 8,
-  },
-  {
-    id: 'early-bird',
-    title: 'Early Bird',
-    description: 'Wake up by 6:00 AM for 14 logged nights.',
-    icon: Sun,
-    reward: 150,
-    tier: 'silver',
-    category: 'Sleep',
-    rarity: 2,
-    total: 14,
-  },
-  {
-    id: 'consistency-king',
-    title: 'Consistency King',
-    description: 'Build a 30-day habit streak.',
-    icon: Shield,
-    reward: 350,
-    tier: 'gold',
-    category: 'Habits',
-    rarity: 3,
-    total: 30,
-  },
-  {
-    id: 'mood-master',
-    title: 'Mood Master',
-    description: 'Track your mood 50 times.',
-    icon: Heart,
-    reward: 450,
-    tier: 'platinum',
-    category: 'Wellness',
-    rarity: 4,
-    total: 50,
-  },
-  {
-    id: 'social-butterfly',
-    title: 'Favorite Collector',
-    description: 'Save 10 favorite journal entries.',
-    icon: Sparkles,
-    reward: 200,
-    tier: 'silver',
-    category: 'Social',
-    rarity: 2,
-    total: 10,
-  },
-];
-
-const buildAchievementProgress = (snapshot: ReveuraDataSnapshot) => {
-  const qualitySleepCount = snapshot.sleepEntries.filter((entry) => entry.hours >= 7).length;
-  const earlyWakeCount = snapshot.sleepEntries.filter((entry) => entry.wakeup <= '06:00').length;
-  const bestHabitStreak = snapshot.habits.length
-    ? Math.max(...snapshot.habits.map((habit) => habit.streak ?? calculateHabitStreak(habit.completed)))
-    : 0;
-  const totalGameSessions = snapshot.moodGameStats.bubbleSessions
-    + snapshot.moodGameStats.memorySessions
-    + snapshot.moodGameStats.zenSessions
-    + snapshot.moodGameStats.reflexSessions;
-  const favoriteJournalCount = snapshot.journalEntries.filter((entry) => entry.isFavorite).length;
-  const activityCount = snapshot.moods.length + snapshot.habits.length + snapshot.journalEntries.length + snapshot.sleepEntries.length;
-
-  const progressMap: Record<string, number> = {
-    'first-steps': activityCount,
-    'week-warrior': snapshot.moods.length,
-    'zen-master': totalGameSessions,
-    'habit-architect': snapshot.habits.length,
-    'dream-catcher': qualitySleepCount,
-    'journal-sage': snapshot.journalEntries.length,
-    'wellness-legend': bestHabitStreak,
-    'mind-olympian': 0,
-    'early-bird': earlyWakeCount,
-    'consistency-king': bestHabitStreak,
-    'mood-master': snapshot.moods.length,
-    'social-butterfly': favoriteJournalCount,
-  };
-
-  return progressMap;
-};
-
-const buildAchievements = (snapshot: ReveuraDataSnapshot, claimedIds: string[]) => {
-  const progressMap = buildAchievementProgress(snapshot);
-
-  const baseAchievements = ACHIEVEMENT_DEFINITIONS.map((definition) => {
-    const progress = Math.min(progressMap[definition.id] ?? 0, definition.total);
-
-    return {
-      ...definition,
-      progress,
-      unlocked: progress >= definition.total,
-      claimed: claimedIds.includes(definition.id),
-    } satisfies Achievement;
-  });
-
-  const unlockedBeforeMastery = baseAchievements.filter((achievement) => achievement.id !== 'mind-olympian' && achievement.unlocked).length;
-
-  return baseAchievements.map((achievement) => {
-    if (achievement.id !== 'mind-olympian') {
-      return achievement;
-    }
-
-    const progress = Math.min(unlockedBeforeMastery, achievement.total);
-
-    return {
-      ...achievement,
-      progress,
-      unlocked: progress >= achievement.total,
-    };
-  });
-};
-
-const buildBadges = (achievements: Achievement[]): Badge[] => [
-  { id: 'pioneer', name: 'Pioneer', icon: Rocket, color: 'from-orange-500 to-red-500', unlocked: achievements.some((achievement) => achievement.id === 'first-steps' && achievement.unlocked), description: 'First activity logged' },
-  { id: 'champion', name: 'Champion', icon: Trophy, color: 'from-yellow-400 to-amber-500', unlocked: achievements.some((achievement) => achievement.id === 'week-warrior' && achievement.unlocked), description: 'Weekly momentum achieved' },
-  { id: 'guardian', name: 'Guardian', icon: Shield, color: 'from-blue-500 to-cyan-500', unlocked: achievements.some((achievement) => achievement.id === 'consistency-king' && achievement.unlocked), description: 'Habit streak protector' },
-  { id: 'sage', name: 'Sage', icon: Brain, color: 'from-purple-500 to-pink-500', unlocked: achievements.some((achievement) => achievement.id === 'journal-sage' && achievement.unlocked), description: 'Mindful reflection unlocked' },
-  { id: 'legend', name: 'Legend', icon: Crown, color: 'from-yellow-300 via-pink-400 to-purple-500', unlocked: achievements.some((achievement) => achievement.id === 'wellness-legend' && achievement.unlocked), description: 'Ultimate streak mastery' },
-  { id: 'diamond', name: 'Diamond', icon: Diamond, color: 'from-cyan-300 to-blue-400', unlocked: achievements.filter((achievement) => achievement.unlocked).length >= 8, description: 'Eight achievements unlocked' },
-];
-
 export default function AchievementsPage() {
-  const { playClickSound } = useSoundEffects();
+  const { playClickSound } = require('@/hooks/useSoundEffects').useSoundEffects();
   const [selectedCategory, setSelectedCategory] = useState('All');
-  const [selectedAchievementId, setSelectedAchievementId] = useState<string | null>(null);
+  const [selectedAchievement, setSelectedAchievement] = useState<Achievement | null>(null);
   const [showBadges, setShowBadges] = useState(false);
-  const [snapshot] = useState(() => getReveuraDataSnapshot());
-  const [claimedAchievementIds, setClaimedAchievementIds] = useState<string[]>(() => getClaimedAchievementIds());
+  
+  const [achievements, setAchievements] = useState<Achievement[]>([
+    {
+      id: 'first-steps',
+      title: 'First Steps',
+      description: 'Begin your wellness journey by completing your first activity',
+      icon: Rocket,
+      unlocked: true,
+      claimed: true,
+      progress: 1,
+      total: 1,
+      reward: 50,
+      tier: 'bronze',
+      category: 'Wellness',
+      rarity: 1,
+    },
+    {
+      id: 'week-warrior',
+      title: 'Week Warrior',
+      description: 'Track your mood for 7 consecutive days',
+      icon: Flame,
+      unlocked: true,
+      claimed: false,
+      progress: 7,
+      total: 7,
+      reward: 100,
+      tier: 'silver',
+      category: 'Wellness',
+      rarity: 2,
+    },
+    {
+      id: 'zen-master',
+      title: 'Zen Master',
+      description: 'Complete 25 breathing exercises',
+      icon: Brain,
+      unlocked: false,
+      claimed: false,
+      progress: 18,
+      total: 25,
+      reward: 200,
+      tier: 'gold',
+      category: 'Mindfulness',
+      rarity: 3,
+    },
+    {
+      id: 'habit-architect',
+      title: 'Habit Architect',
+      description: 'Create and maintain 5 habits for 30 days',
+      icon: Target,
+      unlocked: false,
+      claimed: false,
+      progress: 3,
+      total: 5,
+      reward: 300,
+      tier: 'gold',
+      category: 'Habits',
+      rarity: 3,
+    },
+    {
+      id: 'dream-catcher',
+      title: 'Dream Catcher',
+      description: 'Log 50 nights of quality sleep (7+ hours)',
+      icon: Moon,
+      unlocked: false,
+      claimed: false,
+      progress: 32,
+      total: 50,
+      reward: 400,
+      tier: 'platinum',
+      category: 'Sleep',
+      rarity: 4,
+    },
+    {
+      id: 'journal-sage',
+      title: 'Journal Sage',
+      description: 'Write 100 journal entries with deep reflection',
+      icon: BookOpen,
+      unlocked: false,
+      claimed: false,
+      progress: 67,
+      total: 100,
+      reward: 500,
+      tier: 'platinum',
+      category: 'Mindfulness',
+      rarity: 4,
+    },
+    {
+      id: 'wellness-legend',
+      title: 'Wellness Legend',
+      description: 'Achieve 100 day streak across all activities',
+      icon: Crown,
+      unlocked: false,
+      claimed: false,
+      progress: 45,
+      total: 100,
+      reward: 1000,
+      tier: 'diamond',
+      category: 'Mastery',
+      rarity: 5,
+    },
+    {
+      id: 'mind-olympian',
+      title: 'Mind Olympian',
+      description: 'Complete all mindfulness challenges',
+      icon: Trophy,
+      unlocked: false,
+      claimed: false,
+      progress: 8,
+      total: 12,
+      reward: 750,
+      tier: 'diamond',
+      category: 'Mastery',
+      rarity: 5,
+    },
+    {
+      id: 'early-bird',
+      title: 'Early Bird',
+      description: 'Wake up before 6 AM for 14 days',
+      icon: Sun,
+      unlocked: true,
+      claimed: false,
+      progress: 14,
+      total: 14,
+      reward: 150,
+      tier: 'silver',
+      category: 'Sleep',
+      rarity: 2,
+    },
+    {
+      id: 'consistency-king',
+      title: 'Consistency King',
+      description: 'Never miss a daily check-in for 30 days',
+      icon: Shield,
+      unlocked: false,
+      claimed: false,
+      progress: 22,
+      total: 30,
+      reward: 350,
+      tier: 'gold',
+      category: 'Habits',
+      rarity: 3,
+    },
+    {
+      id: 'mood-master',
+      title: 'Mood Master',
+      description: 'Track your mood 200 times',
+      icon: Heart,
+      unlocked: false,
+      claimed: false,
+      progress: 134,
+      total: 200,
+      reward: 450,
+      tier: 'platinum',
+      category: 'Wellness',
+      rarity: 4,
+    },
+    {
+      id: 'social-butterfly',
+      title: 'Social Butterfly',
+      description: 'Share your achievements with 10 friends',
+      icon: Sparkles,
+      unlocked: false,
+      claimed: false,
+      progress: 3,
+      total: 10,
+      reward: 200,
+      tier: 'silver',
+      category: 'Social',
+      rarity: 2,
+    },
+  ]);
 
-  const achievements = buildAchievements(snapshot, claimedAchievementIds);
-  const badges = buildBadges(achievements);
-  const selectedAchievement = achievements.find((achievement) => achievement.id === selectedAchievementId) ?? null;
+  const [badges, setBadges] = useState<Badge[]>([
+    { id: 'pioneer', name: 'Pioneer', icon: Rocket, color: 'from-orange-500 to-red-500', unlocked: true, description: 'First to explore' },
+    { id: 'champion', name: 'Champion', icon: Trophy, color: 'from-yellow-400 to-amber-500', unlocked: true, description: 'Victory achieved' },
+    { id: 'guardian', name: 'Guardian', icon: Shield, color: 'from-blue-500 to-cyan-500', unlocked: false, description: 'Protector of habits' },
+    { id: 'sage', name: 'Sage', icon: Brain, color: 'from-purple-500 to-pink-500', unlocked: false, description: 'Wisdom unlocked' },
+    { id: 'legend', name: 'Legend', icon: Crown, color: 'from-yellow-300 via-pink-400 to-purple-500', unlocked: false, description: 'Ultimate mastery' },
+    { id: 'diamond', name: 'Diamond', icon: Diamond, color: 'from-cyan-300 to-blue-400', unlocked: false, description: 'Rare excellence' },
+  ]);
 
   // Calculate stats
   const totalXP = achievements.filter(a => a.claimed).reduce((sum, a) => sum + a.reward, 0);
   const unclaimedXP = achievements.filter(a => a.unlocked && !a.claimed).reduce((sum, a) => sum + a.reward, 0);
   const level = Math.floor(totalXP / 500) + 1;
+  const xpForNextLevel = level * 500;
   const xpProgress = ((totalXP % 500) / 500) * 100;
   const unlockedCount = achievements.filter(a => a.unlocked).length;
   const totalAchievements = achievements.length;
@@ -330,11 +280,12 @@ export default function AchievementsPage() {
       });
     }, 200);
 
-    const nextClaimedIds = [...new Set([...claimedAchievementIds, achievement.id])];
-    setClaimedAchievementIds(nextClaimedIds);
-    saveClaimedAchievementIds(nextClaimedIds);
+    // Update achievement
+    setAchievements(prev => prev.map(a => 
+      a.id === achievement.id ? { ...a, claimed: true } : a
+    ));
 
-    toast.custom(() => (
+    toast.custom((t) => (
       <motion.div
         initial={{ opacity: 0, y: 50, scale: 0.8 }}
         animate={{ opacity: 1, y: 0, scale: 1 }}
@@ -485,14 +436,14 @@ export default function AchievementsPage() {
             </motion.div>
 
             <motion.h1 
-              className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-extrabold mb-3 sm:mb-4"
-              style={{ fontFamily: "'Playfair Display', serif" }}
+              className="text-2xl sm:text-3xl md:text-4xl font-black mb-3 sm:mb-4"
+              style={{ fontFamily: "var(--font-display)" }}
             >
               <span className="bg-gradient-to-r from-yellow-300 via-amber-400 to-orange-500 bg-clip-text text-transparent">
                 Hall of Achievements
               </span>
             </motion.h1>
-            <p className="text-gray-400 text-sm sm:text-base md:text-lg lg:text-xl max-w-2xl mx-auto px-4">
+            <p className="text-gray-400 text-sm sm:text-base max-w-2xl mx-auto px-4">
               Your legendary journey awaits. Unlock achievements, earn rewards, and become a wellness master.
             </p>
           </motion.div>
@@ -511,7 +462,7 @@ export default function AchievementsPage() {
                 </div>
                 <div>
                   <p className="text-purple-300 text-xs sm:text-sm font-medium">Current Level</p>
-                  <p className="text-white font-extrabold text-xl sm:text-2xl md:text-3xl" style={{ fontFamily: "var(--font-heading)" }}>{level}</p>
+                  <p className="text-white font-black text-xl sm:text-2xl" style={{ fontFamily: "var(--font-heading)" }}>{level}</p>
                 </div>
               </div>
               <div className="mt-3 sm:mt-4">
@@ -537,14 +488,14 @@ export default function AchievementsPage() {
             </TiltCard>
 
             {/* Total XP Card */}
-            <TiltCard className="bg-gradient-to-br from-yellow-900/50 to-amber-900/50 backdrop-blur-xl border border-yellow-500/30 rounded-2xl sm:rounded-3xl p-4 sm:p-5 shadow-xl shadow-yellow-500/20">
+            <TiltCard className="bg-gradient-to-br from-yellow-900/50 to-amber-900/50 backdrop-blur-xl border border-yellow-500/30 rounded-2xl sm:rounded-3xl p-4 sm:p-6 shadow-xl shadow-yellow-500/20">
               <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 sm:gap-4">
                 <div className="w-12 h-12 sm:w-14 sm:h-14 md:w-16 md:h-16 rounded-xl sm:rounded-2xl bg-gradient-to-br from-yellow-400 to-amber-500 flex items-center justify-center shadow-lg shadow-yellow-500/30">
                   <Gem className="w-6 h-6 sm:w-7 sm:h-7 md:w-8 md:h-8 text-white" />
                 </div>
                 <div>
                   <p className="text-yellow-300 text-xs sm:text-sm font-medium">Total XP</p>
-                  <p className="text-white font-extrabold text-xl sm:text-2xl md:text-3xl" style={{ fontFamily: "var(--font-heading)" }}>{totalXP.toLocaleString()}</p>
+                  <p className="text-white font-black text-xl sm:text-2xl" style={{ fontFamily: "var(--font-heading)" }}>{totalXP.toLocaleString()}</p>
                 </div>
               </div>
               {unclaimedXP > 0 && (
@@ -561,14 +512,14 @@ export default function AchievementsPage() {
             </TiltCard>
 
             {/* Achievements Card */}
-            <TiltCard className="bg-gradient-to-br from-cyan-900/50 to-blue-900/50 backdrop-blur-xl border border-cyan-500/30 rounded-3xl p-5 shadow-xl shadow-cyan-500/20">
+            <TiltCard className="bg-gradient-to-br from-cyan-900/50 to-blue-900/50 backdrop-blur-xl border border-cyan-500/30 rounded-3xl p-6 shadow-xl shadow-cyan-500/20">
               <div className="flex items-center gap-4">
                 <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-cyan-400 to-blue-500 flex items-center justify-center shadow-lg shadow-cyan-500/30">
                   <Award className="w-8 h-8 text-white" />
                 </div>
                 <div>
                   <p className="text-cyan-300 text-sm font-medium">Unlocked</p>
-                  <p className="text-white font-extrabold text-2xl sm:text-3xl" style={{ fontFamily: "var(--font-heading)" }}>{unlockedCount}/{totalAchievements}</p>
+                  <p className="text-white font-black" style={{ fontFamily: "var(--font-heading)", fontSize: "var(--font-display-md)" }}>{unlockedCount}/{totalAchievements}</p>
                 </div>
               </div>
               <div className="mt-4 flex gap-1">
@@ -582,14 +533,14 @@ export default function AchievementsPage() {
             </TiltCard>
 
             {/* Badges Card */}
-            <TiltCard className="bg-gradient-to-br from-pink-900/50 to-rose-900/50 backdrop-blur-xl border border-pink-500/30 rounded-3xl p-5 shadow-xl shadow-pink-500/20 cursor-pointer">
+            <TiltCard className="bg-gradient-to-br from-pink-900/50 to-rose-900/50 backdrop-blur-xl border border-pink-500/30 rounded-3xl p-6 shadow-xl shadow-pink-500/20 cursor-pointer">
               <div className="flex items-center gap-4" onClick={() => setShowBadges(true)}>
                 <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-pink-400 to-rose-500 flex items-center justify-center shadow-lg shadow-pink-500/30">
                   <Crown className="w-8 h-8 text-white" />
                 </div>
                 <div>
                   <p className="text-pink-300 text-sm font-medium">Badges</p>
-                  <p className="text-white font-extrabold text-2xl sm:text-3xl" style={{ fontFamily: "var(--font-heading)" }}>{badges.filter(b => b.unlocked).length}/{badges.length}</p>
+                  <p className="text-white font-black" style={{ fontFamily: "var(--font-heading)", fontSize: "var(--font-display-md)" }}>{badges.filter(b => b.unlocked).length}/{badges.length}</p>
                 </div>
               </div>
               <div className="mt-4 flex gap-2">
@@ -658,7 +609,7 @@ export default function AchievementsPage() {
                     exit={{ opacity: 0, scale: 0.8 }}
                     transition={{ delay: index * 0.05 }}
                     whileHover={{ y: -8 }}
-                    onClick={() => setSelectedAchievementId(achievement.id)}
+                    onClick={() => setSelectedAchievement(achievement)}
                     className="cursor-pointer group"
                   >
                     <TiltCard className={`relative bg-gradient-to-br from-slate-900/80 to-slate-950/80 backdrop-blur-xl border rounded-3xl overflow-hidden transition-all duration-300 ${
@@ -682,7 +633,7 @@ export default function AchievementsPage() {
                         </div>
                       )}
 
-                      <div className="relative z-5 p-5">
+                      <div className="relative z-5 p-6">
                         {/* Tier Badge & Rarity */}
                         <div className="flex items-center justify-between mb-4">
                           <span className={`px-3 py-1 rounded-full text-xs font-bold uppercase bg-gradient-to-r ${tierColors.primary} text-white`}>
@@ -709,7 +660,7 @@ export default function AchievementsPage() {
                         </motion.div>
 
                         {/* Title & Description */}
-                        <h3 className={`text-lg font-bold mb-2 ${achievement.unlocked ? 'text-white' : 'text-gray-500'}`}>
+                        <h3 className={`text-xl font-bold mb-2 ${achievement.unlocked ? 'text-white' : 'text-gray-500'}`}>
                           {achievement.title}
                         </h3>
                         <p className="text-gray-400 text-sm mb-4 line-clamp-2">
@@ -781,7 +732,7 @@ export default function AchievementsPage() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black/80 backdrop-blur-xl z-50 flex items-center justify-center p-5 sm:p-8"
+            className="fixed inset-0 bg-black/80 backdrop-blur-xl z-50 flex items-center justify-center p-8"
             onClick={() => setShowBadges(false)}
           >
             <motion.div
@@ -789,10 +740,10 @@ export default function AchievementsPage() {
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.8, opacity: 0 }}
               onClick={(e) => e.stopPropagation()}
-              className="bg-gradient-to-br from-slate-900 to-slate-950 border border-purple-500/30 rounded-3xl p-6 sm:p-8 max-w-2xl w-full shadow-2xl shadow-purple-500/20"
+              className="bg-gradient-to-br from-slate-900 to-slate-950 border border-purple-500/30 rounded-3xl p-8 max-w-2xl w-full shadow-2xl shadow-purple-500/20"
             >
               <div className="flex items-center justify-between mb-8">
-                <h2 className="text-2xl font-bold text-white">Your Badges</h2>
+                <h2 className="text-3xl font-bold text-white">Your Badges</h2>
                 <button onClick={() => setShowBadges(false)} className="text-gray-400 hover:text-white">
                   <X className="w-6 h-6" />
                 </button>
@@ -845,15 +796,15 @@ export default function AchievementsPage() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black/80 backdrop-blur-xl z-50 flex items-center justify-center p-5 sm:p-8"
-            onClick={() => setSelectedAchievementId(null)}
+            className="fixed inset-0 bg-black/80 backdrop-blur-xl z-50 flex items-center justify-center p-8"
+            onClick={() => setSelectedAchievement(null)}
           >
             <motion.div
               initial={{ scale: 0.8, opacity: 0, rotateY: -30 }}
               animate={{ scale: 1, opacity: 1, rotateY: 0 }}
               exit={{ scale: 0.8, opacity: 0, rotateY: 30 }}
               onClick={(e) => e.stopPropagation()}
-              className={`relative bg-gradient-to-br from-slate-900 to-slate-950 border rounded-3xl p-6 sm:p-8 max-w-lg w-full shadow-2xl ${
+              className={`relative bg-gradient-to-br from-slate-900 to-slate-950 border rounded-3xl p-8 max-w-lg w-full shadow-2xl ${
                 selectedAchievement.unlocked 
                   ? `${TIER_COLORS[selectedAchievement.tier].border} ${TIER_COLORS[selectedAchievement.tier].glow}`
                   : 'border-gray-800'
@@ -862,7 +813,7 @@ export default function AchievementsPage() {
             >
               {/* Close button */}
               <button 
-                onClick={() => setSelectedAchievementId(null)} 
+                onClick={() => setSelectedAchievement(null)} 
                 className="absolute top-4 right-4 text-gray-400 hover:text-white"
               >
                 <X className="w-6 h-6" />
@@ -872,13 +823,13 @@ export default function AchievementsPage() {
               <motion.div
                 animate={{ rotateY: [0, 360] }}
                 transition={{ duration: 6, repeat: Infinity, ease: 'linear' }}
-                className={`w-20 h-20 mx-auto rounded-3xl flex items-center justify-center mb-5 ${
+                className={`w-24 h-24 mx-auto rounded-3xl flex items-center justify-center mb-6 ${
                   selectedAchievement.unlocked 
                     ? `bg-gradient-to-br ${TIER_COLORS[selectedAchievement.tier].primary} shadow-xl ${TIER_COLORS[selectedAchievement.tier].glow}`
                     : 'bg-gray-800'
                 }`}
               >
-                <selectedAchievement.icon className={`w-10 h-10 ${selectedAchievement.unlocked ? 'text-white' : 'text-gray-600'}`} />
+                <selectedAchievement.icon className={`w-12 h-12 ${selectedAchievement.unlocked ? 'text-white' : 'text-gray-600'}`} />
               </motion.div>
 
               {/* Tier & Rarity */}
@@ -892,7 +843,7 @@ export default function AchievementsPage() {
               </div>
 
               {/* Title & Description */}
-              <h2 className="text-2xl font-bold text-white text-center mb-2">
+              <h2 className="text-3xl font-bold text-white text-center mb-2">
                 {selectedAchievement.title}
               </h2>
               <p className="text-gray-400 text-center mb-6">
@@ -919,7 +870,7 @@ export default function AchievementsPage() {
               {/* Reward */}
               <div className="flex items-center justify-center gap-3 mb-6 py-4 bg-yellow-500/10 border border-yellow-500/30 rounded-2xl">
                 <Gem className="w-8 h-8 text-yellow-400" />
-                <span className="text-xl font-bold text-yellow-400">{selectedAchievement.reward} XP</span>
+                <span className="text-2xl font-bold text-yellow-400">{selectedAchievement.reward} XP</span>
               </div>
 
               {/* Action Button */}
@@ -929,7 +880,7 @@ export default function AchievementsPage() {
                   whileTap={{ scale: 0.95 }}
                   onClick={() => {
                     handleClaimReward(selectedAchievement);
-                    setSelectedAchievementId(null);
+                    setSelectedAchievement(null);
                   }}
                   className={`w-full py-4 rounded-2xl bg-gradient-to-r ${TIER_COLORS[selectedAchievement.tier].primary} text-white font-bold text-lg shadow-xl ${TIER_COLORS[selectedAchievement.tier].glow}`}
                 >
